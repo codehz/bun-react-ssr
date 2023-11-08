@@ -48,7 +48,7 @@ export const RouterHost = ({
   Shell: React.ComponentType<{ children: React.ReactElement }>;
 }) => {
   const pathname = useLocationProperty(
-    () => location.pathname,
+    () => location.pathname + location.search,
     () => globalX.__INITIAL_ROUTE__
   );
   const [current, setCurrent] = useState(children);
@@ -58,7 +58,7 @@ export const RouterHost = ({
       (async () => {
         const currentVersion = ++version.current;
         const [module, props] = await Promise.all([
-          import(match(pathname)!.value),
+          import(match(pathname.split("?")[0])!.value),
           cachedFetchServerSideProps(pathname),
         ]);
         if (currentVersion === version.current) {

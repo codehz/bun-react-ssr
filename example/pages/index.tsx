@@ -1,5 +1,5 @@
-import { Link, navigate, useLink } from "bun-react-ssr/router";
+import { Link } from "bun-react-ssr/router";
 
 export default function Index() {
-  return <Link href="/test">index</Link>;
+  return <Link href="/test?test">index</Link>;
 }

@@ -47,7 +47,7 @@ export class StaticRouters {
       bootstrapModules?: string[];
     }
   ) {
-    const { pathname } = new URL(request.url);
+    const { pathname, search } = new URL(request.url);
     const staticResponse = await serveFromDir({
       directory: this.buildDir,
       path: pathname,
@@ -92,7 +92,7 @@ export class StaticRouters {
         bootstrapScriptContent: [
           preloadScript,
           `__PAGES_DIR__=${JSON.stringify(this.pageDir)}`,
-          `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname)}`,
+          `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
           `__ROUTES__=${this.#routes_dump}`,
           `__SERVERSIDE_PROPS__=${stringified}`,
         ]
