@@ -27,8 +27,10 @@ async function cachedFetchServerSideProps(pathname: string) {
     return cache.get(pathname);
   }
   const response = await fetch(pathname, {
+    method: "POST",
     headers: {
       Accept: "application/vnd.server-side-props",
+      "Cache-Control": "no-cache",
     },
   });
   if (response.ok) {
