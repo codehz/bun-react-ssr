@@ -1,6 +1,17 @@
 {
   "name": "bun-react-ssr",
   "module": "index.tsx",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codehz/bun-react-ssr"
+  },
+  "author": {
+    "name": "CodeHz",
+    "email": "git@hertz.moe"
+  },
+  "keywords": ["bun", "react", "ssr"],
+  "license": "MIT",
   "type": "module",
   "devDependencies": {
     "@types/react": "^18.2.37",
