@@ -29,22 +29,22 @@ export class StaticRouters {
           "/" + relative(join(baseDir, buildDir), filePath),
         ])
       ),
-      {
-        omitStack: true,
-      }
+      { omitStack: true }
     );
   }
 
-  async serve(
+  async serve<T = void>(
     request: Request,
     {
       Shell,
       preloadScript,
       bootstrapModules,
+      context,
     }: {
       Shell: React.ComponentType<{ children: React.ReactElement }>;
       preloadScript?: string;
       bootstrapModules?: string[];
+      context?: T;
     }
   ) {
     const { pathname, search } = new URL(request.url);
@@ -66,6 +66,7 @@ export class StaticRouters {
       params: serverSide.params,
       req: request,
       query: serverSide.query,
+      context,
     });
     const stringified = NJSON.stringify(result, { omitStack: true });
     if (request.headers.get("Accept") === "application/vnd.server-side-props") {
