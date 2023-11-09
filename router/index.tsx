@@ -64,11 +64,15 @@ export const RouterHost = ({
           cachedFetchServerSideProps(pathname),
         ]);
         if (currentVersion === version.current) {
-          setCurrent(
-            <Shell {...props}>
-              <module.default {...props?.props} />
-            </Shell>
-          );
+          if (props.redirect) {
+            navigate(props.redirect);
+          } else {
+            setCurrent(
+              <Shell {...props}>
+                <module.default {...props?.props} />
+              </Shell>
+            );
+          }
         }
       })().catch((e) => {
         console.log(e);
