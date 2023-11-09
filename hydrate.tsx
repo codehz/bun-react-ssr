@@ -20,12 +20,10 @@ export async function hydrate(
   const Initial = await import(matched.value);
   return hydrateRoot(
     document,
-    <Suspense>
-      <RouterHost Shell={Shell}>
-        <Shell {...globalX.__SERVERSIDE_PROPS__}>
-          <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />
-        </Shell>
-      </RouterHost>
-    </Suspense>
+    <RouterHost Shell={Shell}>
+      <Shell {...globalX.__SERVERSIDE_PROPS__}>
+        <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />
+      </Shell>
+    </RouterHost>
   );
 }

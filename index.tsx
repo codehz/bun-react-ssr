@@ -83,11 +83,9 @@ export class StaticRouters {
       });
     }
     const stream = await renderToReadableStream(
-      <Suspense>
-        <Shell {...result}>
-          <module.default {...result?.props} />
-        </Shell>
-      </Suspense>,
+      <Shell {...result}>
+        <module.default {...result?.props} />
+      </Shell>,
       {
         signal: request.signal,
         bootstrapScriptContent: [
