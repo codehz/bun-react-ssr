@@ -64,7 +64,7 @@ export const RouterHost = ({
           cachedFetchServerSideProps(pathname),
         ]);
         if (currentVersion === version.current) {
-          if (props.redirect) {
+          if (props?.redirect) {
             navigate(props.redirect);
           } else {
             setCurrent(
