@@ -1,7 +1,7 @@
 import { FileSystemRouter } from "bun";
 import { NJSON } from "next-json";
+import { statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { Suspense } from "react";
 import { renderToReadableStream } from "react-dom/server";
 
 export class StaticRouters {
@@ -117,9 +117,9 @@ export async function serveFromDir(config: {
   for (const suffix of suffixes) {
     try {
       const pathWithSuffix = join(basePath, suffix);
-      const file = Bun.file(pathWithSuffix);
-      if (await file.exists()) {
-        return new Response(Bun.file(pathWithSuffix));
+      const stat = statSync(pathWithSuffix);
+      if (stat?.isFile()) {
+        return Bun.file(pathWithSuffix);
       }
     } catch (err) {}
   }
