@@ -46,15 +46,15 @@ export class StaticRouters {
       bootstrapModules?: string[];
       context?: T;
     }
-  ) {
+  ): Promise<Response | null> {
     const { pathname, search } = new URL(request.url);
     const staticResponse = await serveFromDir({
       directory: this.buildDir,
       path: pathname,
     });
-    if (staticResponse) return staticResponse;
+    if (staticResponse) return new Response(staticResponse);
     const serverSide = this.server.match(request);
-    if (!serverSide) return;
+    if (!serverSide) return null;
     const clientSide = this.client.match(request);
     if (!clientSide)
       throw new TypeError(
