@@ -25,7 +25,7 @@ await Bun.build({
 
 for (const file of [
   ...(await glob("*.tsx")),
-  ...(await glob("router/*.{ts,tsx}")),
+  ...(await glob("router/**/*.{ts,tsx}")),
   "LICENSE",
   "README.md",
 ]) {
