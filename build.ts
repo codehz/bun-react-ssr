@@ -6,14 +6,12 @@ function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
 }
 
-async function* glob(
+function glob(
   path: string,
-  pattern = "**/*.*"
-): AsyncGenerator<string> {
+  pattern = "**/*.{ts,tsx,js,jsx}"
+): AsyncIterableIterator<string> {
   const glob = new Glob(pattern);
-  for await (const name of glob.scan({ cwd: path, onlyFiles: true })) {
-    yield join(path, name);
-  }
+  return glob.scan({ cwd: path, onlyFiles: true, absolute: true })
 }
 
 export async function build({
