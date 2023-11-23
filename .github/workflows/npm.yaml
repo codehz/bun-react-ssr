@@ -16,6 +16,8 @@ jobs:
         with:
           bun-version: latest
       - run: bun i
+      - run: bun run dist
       - run: npm publish
+        working-directory: dist
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

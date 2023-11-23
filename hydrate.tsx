@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { RouterHost } from "./router";
 import { getRouteMatcher } from "./router/utils/get-route-matcher";

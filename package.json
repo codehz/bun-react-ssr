@@ -1,7 +1,7 @@
 {
   "name": "bun-react-ssr",
   "module": "index.tsx",
-  "version": "0.0.6",
+  "private": "true",
   "repository": {
     "type": "git",
     "url": "https://github.com/codehz/bun-react-ssr"
@@ -17,6 +17,7 @@
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
     "@types/web": "^0.0.119",
+    "bun-plugin-dts": "^0.2.1",
     "bun-types": "latest"
   },
   "peerDependencies": {
@@ -26,5 +27,8 @@
   },
   "dependencies": {
     "next-json": "^0.2.2"
+  },
+  "scripts": {
+    "dist": "bun run scripts/dist.ts"
   }
 }
