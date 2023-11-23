@@ -38,6 +38,7 @@ contents.version = spawnSync("git", ["describe", "--tags"], {
   encoding: "utf-8",
 })
   .stdout.trim()
-  .replace(/-[[:digit:]]\+-g/, "+");
+  .replace(/-[[:digit:]]\+-g/, "+")
+  .replace(/^v/, "");
 delete contents.devDependencies["bun-plugin-dts"];
 await Bun.write("dist/package.json", JSON.stringify(contents, null, 2));
