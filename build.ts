@@ -1,21 +1,18 @@
-import { BunPlugin, fileURLToPath, pathToFileURL } from "bun";
-import { readdir, unlink } from "node:fs/promises";
+import { BunPlugin, Glob, fileURLToPath, pathToFileURL } from "bun";
+import { unlink } from "node:fs/promises";
 import { basename, join } from "node:path";
 
 function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
 }
 
-// Some bug in bun cause use FileSystemRouter with bun.build got Error: Unexpected
-async function* walkDir(path: string): AsyncGenerator<string> {
-  const dirents = await readdir(path, { withFileTypes: true });
-  for (const dirent of dirents) {
-    const finalPath = join(path, dirent.name);
-    if (dirent.isDirectory()) {
-      yield* walkDir(finalPath);
-    } else {
-      yield finalPath;
-    }
+async function* glob(
+  path: string,
+  pattern = "**/*.*"
+): AsyncGenerator<string> {
+  const glob = new Glob(pattern);
+  for await (const name of glob.scan({ cwd: path, onlyFiles: true })) {
+    yield join(path, name);
   }
 }
 
@@ -40,7 +37,7 @@ export async function build({
 }) {
   const entrypoints = [join(baseDir, hydrate)];
   const absPageDir = join(baseDir, pageDir);
-  for await (const path of walkDir(absPageDir)) {
+  for await (const path of glob(absPageDir)) {
     entrypoints.push(path);
   }
   const result = await Bun.build({
@@ -99,7 +96,7 @@ export async function build({
     ],
   });
   if (result.success) {
-    for await (const path of walkDir(join(baseDir, buildDir))) {
+    for await (const path of glob(join(baseDir, buildDir))) {
       if (result.outputs.every((x) => x.path !== path)) {
         await unlink(path);
       }
