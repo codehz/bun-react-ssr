@@ -34,7 +34,7 @@ for (const file of [
 
 const contents = JSON.parse(await readFile("package.json", "utf-8"));
 delete contents["private"];
-contents.version = spawnSync("git", ["describe", "--tags", "--dirty"], {
+contents.version = spawnSync("git", ["describe", "--tags"], {
   encoding: "utf-8",
 })
   .stdout.trim()
