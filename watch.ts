@@ -23,10 +23,10 @@ class SingleTaskPool {
   }
 }
 
-export async function watchBuild(build: () => Promise<any>, paths: string[]) {
+export function watchBuild(build: () => Promise<any>, paths: string[]) {
   const wrapper = new SingleTaskPool(build);
   wrapper.run();
-  for (const path of paths) {
-    watch(path, { recursive: true }, () => wrapper.run());
-  }
+  return paths.map((path) =>
+    watch(path, { recursive: true }, () => wrapper.run())
+  );
 }
