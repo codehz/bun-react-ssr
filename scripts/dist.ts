@@ -20,7 +20,7 @@ await Bun.build({
   sourcemap: "inline",
   external: ["react", "react-dom"],
   entrypoints: [...(await glob("*.ts"))],
-  plugins: [dts({})],
+  plugins: [dts()],
 });
 
 for (const file of [

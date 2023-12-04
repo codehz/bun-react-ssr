@@ -1,4 +1,4 @@
-import { BunPlugin, Glob, fileURLToPath, pathToFileURL } from "bun";
+import { Glob, fileURLToPath, pathToFileURL } from "bun";
 import { unlink } from "node:fs/promises";
 import { basename, join } from "node:path";
 
@@ -11,7 +11,7 @@ function glob(
   pattern = "**/*.{ts,tsx,js,jsx}"
 ): AsyncIterableIterator<string> {
   const glob = new Glob(pattern);
-  return glob.scan({ cwd: path, onlyFiles: true, absolute: true })
+  return glob.scan({ cwd: path, onlyFiles: true, absolute: true });
 }
 
 export async function build({
@@ -31,7 +31,7 @@ export async function build({
   sourcemap?: "external" | "none" | "inline";
   minify?: boolean;
   define?: Record<string, string>;
-  plugins?: BunPlugin[];
+  plugins?: import("bun").BunPlugin[];
 }) {
   const entrypoints = [join(baseDir, hydrate)];
   const absPageDir = join(baseDir, pageDir);
