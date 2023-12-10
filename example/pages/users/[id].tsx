@@ -1,5 +1,10 @@
-export default function User() {
-  return <div>user</div>;
+export default function User(props: any) {
+  return (
+    <div>
+      user {JSON.stringify(props)}
+      <div onClick={() => history.back()}>back</div>
+    </div>
+  );
 }
 
 export function getServerSideProps(props: any) {
