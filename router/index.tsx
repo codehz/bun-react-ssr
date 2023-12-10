@@ -67,6 +67,8 @@ export const RouterHost = ({
           if (props?.redirect) {
             navigate(props.redirect);
           } else {
+            // @ts-ignore
+            delete globalX.__INITIAL_ROUTE__;
             setCurrent(
               <Shell {...props}>
                 <module.default {...props?.props} />
