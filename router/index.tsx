@@ -20,12 +20,7 @@ const match = globalX.__ROUTES__
   ? getRouteMatcher(globalX.__ROUTES__)
   : () => null;
 
-const cache = new Map<string, any>();
-
-async function cachedFetchServerSideProps(pathname: string) {
-  if (cache.has(pathname)) {
-    return cache.get(pathname);
-  }
+async function fetchServerSideProps(pathname: string) {
   const response = await fetch(pathname, {
     method: "POST",
     headers: {
@@ -35,9 +30,7 @@ async function cachedFetchServerSideProps(pathname: string) {
   });
   if (response.ok) {
     const text = await response.text();
-    const props = eval(`(${text})`);
-    cache.set(pathname, props);
-    return props;
+    return eval(`(${text})`);
   }
   throw new Error("Failed to fetch");
 }
@@ -61,7 +54,7 @@ export const RouterHost = ({
         const currentVersion = ++version.current;
         const [module, props] = await Promise.all([
           import(match(pathname.split("?")[0])!.value),
-          cachedFetchServerSideProps(pathname),
+          fetchServerSideProps(pathname),
         ]);
         if (currentVersion === version.current) {
           if (props?.redirect) {
