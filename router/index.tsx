@@ -1,4 +1,6 @@
 import React, {
+  createContext,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -35,6 +37,8 @@ async function fetchServerSideProps(pathname: string) {
   throw new Error("Failed to fetch");
 }
 
+export const ReloadContext = createContext(async (): Promise<void> => {});
+
 export const RouterHost = ({
   children,
   Shell,
@@ -48,37 +52,42 @@ export const RouterHost = ({
   );
   const [current, setCurrent] = useState(children);
   const version = useRef<number>(0);
+  const reload = useCallback(
+    async (target = location.pathname + location.search) => {
+      if (typeof target !== "string") throw new Error("invalid target", target);
+      const currentVersion = ++version.current;
+      const [module, props] = await Promise.all([
+        import(match(target.split("?")[0])!.value),
+        fetchServerSideProps(target),
+      ]);
+      if (currentVersion === version.current) {
+        if (props?.redirect) {
+          navigate(props.redirect);
+        } else {
+          setCurrent(
+            <Shell {...props}>
+              <module.default {...props?.props} />
+            </Shell>
+          );
+        }
+      }
+    },
+    []
+  );
   useEffect(() => {
     if (pathname !== globalX.__INITIAL_ROUTE__) {
-      (async () => {
-        const currentVersion = ++version.current;
-        const [module, props] = await Promise.all([
-          import(match(pathname.split("?")[0])!.value),
-          fetchServerSideProps(pathname),
-        ]);
-        if (currentVersion === version.current) {
-          if (props?.redirect) {
-            navigate(props.redirect);
-          } else {
-            // @ts-ignore
-            delete globalX.__INITIAL_ROUTE__;
-            setCurrent(
-              <Shell {...props}>
-                <module.default {...props?.props} />
-              </Shell>
-            );
-          }
-        }
-      })().catch((e) => {
+      reload(pathname).catch((e) => {
         console.log(e);
         location.href = pathname;
       });
+    } else {
+      // @ts-ignore
+      delete globalX.__INITIAL_ROUTE__;
     }
   }, [pathname]);
-  if (pathname === globalX.__INITIAL_ROUTE__) {
-    return children;
-  }
-  return current;
+  return (
+    <ReloadContext.Provider value={reload}>{current}</ReloadContext.Provider>
+  );
 };
 
 const subscribeToLocationUpdates = (callback: () => void) => {
