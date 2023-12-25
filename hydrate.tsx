@@ -13,13 +13,16 @@ const globalX = globalThis as unknown as {
 const match = getRouteMatcher(globalX.__ROUTES__);
 
 export async function hydrate(
-  Shell: React.ComponentType<{ children: React.ReactElement } & ServerSideProps>
+  Shell: React.ComponentType<
+    { children: React.ReactElement } & ServerSideProps
+  >,
+  options?: Omit<React.PropsWithoutRef<typeof RouterHost>, "children" | "Shell">
 ) {
   const matched = match(globalX.__INITIAL_ROUTE__.split("?")[0])!;
   const Initial = await import(matched.value);
   return hydrateRoot(
     document,
-    <RouterHost Shell={Shell}>
+    <RouterHost Shell={Shell} {...options}>
       <Shell {...globalX.__SERVERSIDE_PROPS__}>
         <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />
       </Shell>

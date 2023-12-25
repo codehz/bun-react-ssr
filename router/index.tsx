@@ -42,9 +42,11 @@ export const ReloadContext = createContext(async (): Promise<void> => {});
 export const RouterHost = ({
   children,
   Shell,
+  onRouteUpdated,
 }: {
   children: React.ReactElement;
   Shell: React.ComponentType<{ children: React.ReactElement }>;
+  onRouteUpdated?: (path: string) => void;
 }) => {
   const pathname = useLocationProperty(
     () => location.pathname + location.search,
@@ -64,6 +66,7 @@ export const RouterHost = ({
         if (props?.redirect) {
           navigate(props.redirect);
         } else {
+          onRouteUpdated?.(target);
           setCurrent(
             <Shell {...props}>
               <module.default {...props?.props} />
@@ -81,6 +84,7 @@ export const RouterHost = ({
         location.href = pathname;
       });
     } else {
+      onRouteUpdated?.(pathname);
       // @ts-ignore
       delete globalX.__INITIAL_ROUTE__;
     }
