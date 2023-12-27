@@ -13,13 +13,19 @@ export function NoSSR({
   return <>{state}</>;
 }
 
+export class ClientOnlyError extends Error {
+  constructor() {
+    super("client only");
+  }
+}
+
 export function lazy<T>(
   importFunc: () => Promise<{ default: React.ComponentType<T> }>
 ): React.ComponentType<T> {
   const LazyComponent = oldLazy(importFunc);
   return (props: any) => {
     if (typeof window === "undefined") {
-      throw new Error("client only");
+      throw new ClientOnlyError();
     }
     return <LazyComponent {...props} />;
   };

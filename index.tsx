@@ -3,6 +3,7 @@ import { NJSON } from "next-json";
 import { statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
+import { ClientOnlyError } from "./client";
 
 export class StaticRouters {
   readonly server: FileSystemRouter;
@@ -41,6 +42,7 @@ export class StaticRouters {
       bootstrapModules,
       context,
       onError = (error, errorInfo) => {
+        if (error instanceof ClientOnlyError) return;
         console.error(error, errorInfo);
       },
     }: {
