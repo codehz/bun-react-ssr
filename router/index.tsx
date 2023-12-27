@@ -78,27 +78,27 @@ export const RouterHost = ({
     () => globalX.__INITIAL_ROUTE__
   );
   const [current, setCurrent] = useState(children);
-  const version = useRef<number>(0);
+  const [version, setVersion] = useState(0);
+  const versionRef = useRef<number>(version);
   const reload = useCallback(
     async (target = location.pathname + location.search) => {
       if (typeof target !== "string") throw new Error("invalid target", target);
-      const currentVersion = ++version.current;
+      const currentVersion = ++versionRef.current;
       const [module, props] = await Promise.all([
         import(match(target.split("?")[0])!.value),
         fetchServerSideProps(target),
       ]);
-      if (currentVersion === version.current) {
+      if (currentVersion === versionRef.current) {
         if (props?.redirect) {
           navigate(props.redirect);
         } else {
           startTransition(() => {
             onRouteUpdated?.(target);
+            setVersion(currentVersion);
             setCurrent(
-              <VersionContext.Provider value={currentVersion}>
-                <Shell {...props}>
-                  <module.default {...props?.props} />
-                </Shell>
-              </VersionContext.Provider>
+              <Shell {...props}>
+                <module.default {...props?.props} />
+              </Shell>
             );
           });
         }
@@ -119,7 +119,11 @@ export const RouterHost = ({
     }
   }, [pathname]);
   return (
-    <ReloadContext.Provider value={reload}>{current}</ReloadContext.Provider>
+    <ReloadContext.Provider value={reload}>
+      <VersionContext.Provider value={version}>
+        {current}
+      </VersionContext.Provider>
+    </ReloadContext.Provider>
   );
 };
 
