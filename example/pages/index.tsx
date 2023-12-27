@@ -1,8 +1,11 @@
-import { Link, ReloadContext } from "bun-react-ssr/router";
+import { Link, ReloadContext, useLoadingEffect } from "bun-react-ssr/router";
 import { useContext } from "react";
 
 export default function Index({ time }: { time: Date }) {
   const reload = useContext(ReloadContext);
+  useLoadingEffect(() => {
+    console.log("reload!");
+  });
   return (
     <div>
       <div>time {time.toISOString()}</div>

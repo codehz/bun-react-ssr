@@ -1,6 +1,8 @@
 import React, {
   createContext,
+  startTransition,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -37,6 +39,29 @@ async function fetchServerSideProps(pathname: string) {
   throw new Error("Failed to fetch");
 }
 
+const VersionContext = createContext(0);
+
+/**
+ * a hook that returns a version number that is incremented on each route change or reload
+ * @returns the current version (incremented on each route change or reload)
+ */
+export const useLoadingVersion = () => useContext(VersionContext);
+
+/**
+ * a hook that runs an effect when the version changes, which is incremented on each route change or reload
+ * @param effect the effect to run
+ * @param deps the dependencies
+ */
+export const useLoadingEffect = (
+  effect: React.EffectCallback,
+  deps: React.DependencyList = []
+) => {
+  useEffect(effect, [useContext(VersionContext), ...deps]);
+};
+
+/**
+ * a context that can be used to reload the current page
+ */
 export const ReloadContext = createContext(async (): Promise<void> => {});
 
 export const RouterHost = ({
@@ -66,27 +91,31 @@ export const RouterHost = ({
         if (props?.redirect) {
           navigate(props.redirect);
         } else {
-          onRouteUpdated?.(target);
-          setCurrent(
-            <Shell {...props}>
-              <module.default {...props?.props} />
-            </Shell>
-          );
+          startTransition(() => {
+            onRouteUpdated?.(target);
+            setCurrent(
+              <VersionContext.Provider value={currentVersion}>
+                <Shell {...props}>
+                  <module.default {...props?.props} />
+                </Shell>
+              </VersionContext.Provider>
+            );
+          });
         }
       }
     },
     []
   );
   useEffect(() => {
-    if (pathname !== globalX.__INITIAL_ROUTE__) {
+    if (pathname === globalX.__INITIAL_ROUTE__) {
+      onRouteUpdated?.(pathname);
+      // @ts-ignore
+      delete globalX.__INITIAL_ROUTE__;
+    } else {
       reload(pathname).catch((e) => {
         console.log(e);
         location.href = pathname;
       });
-    } else {
-      onRouteUpdated?.(pathname);
-      // @ts-ignore
-      delete globalX.__INITIAL_ROUTE__;
     }
   }, [pathname]);
   return (
@@ -112,6 +141,10 @@ export function useLocationProperty<S extends Location[keyof Location]>(
   return useSyncExternalStore(subscribeToLocationUpdates, fn, ssrFn);
 }
 
+/**
+ * a hook that returns the current pathname
+ * @returns the current pathname
+ */
 export function usePathname() {
   return useLocationProperty(
     () => location.pathname,
@@ -119,6 +152,11 @@ export function usePathname() {
   );
 }
 
+/**
+ * a function that navigates/replaces to a path
+ * @param to the path to navigate to
+ * @param param1 the options, which can include `replace`
+ */
 export const navigate = (to: string, { replace = false } = {}) =>
   history[replace ? eventReplaceState : eventPushState](null, "", to);
 
