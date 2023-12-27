@@ -40,11 +40,15 @@ export class StaticRouters {
       preloadScript,
       bootstrapModules,
       context,
+      onError = (error, errorInfo) => {
+        console.error(error, errorInfo);
+      },
     }: {
       Shell: React.ComponentType<{ children: React.ReactElement }>;
       preloadScript?: string;
       bootstrapModules?: string[];
       context?: T;
+      onError(error: unknown, errorInfo: React.ErrorInfo): string | void;
     }
   ): Promise<Response | null> {
     const { pathname, search } = new URL(request.url);
@@ -98,6 +102,7 @@ export class StaticRouters {
           .filter(Boolean)
           .join(";"),
         bootstrapModules,
+        onError,
       }
     );
     return new Response(stream, {

@@ -1,4 +1,4 @@
-import { hydrateRoot } from "react-dom/client";
+import { hydrateRoot, type ErrorInfo } from "react-dom/client";
 import { RouterHost } from "./router";
 import { getRouteMatcher } from "./router/utils/get-route-matcher";
 import { ServerSideProps } from "./types";
@@ -16,7 +16,12 @@ export async function hydrate(
   Shell: React.ComponentType<
     { children: React.ReactElement } & ServerSideProps
   >,
-  options?: Omit<React.PropsWithoutRef<typeof RouterHost>, "children" | "Shell">
+  {
+    onRecoverableError = () => void 8,
+    ...options
+  }: Omit<React.PropsWithoutRef<typeof RouterHost>, "children" | "Shell"> & {
+    onRecoverableError?: (error: unknown, errorInfo: ErrorInfo) => void;
+  } = {}
 ) {
   const matched = match(globalX.__INITIAL_ROUTE__.split("?")[0])!;
   const Initial = await import(matched.value);
@@ -26,6 +31,7 @@ export async function hydrate(
       <Shell {...globalX.__SERVERSIDE_PROPS__}>
         <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />
       </Shell>
-    </RouterHost>
+    </RouterHost>,
+    { onRecoverableError }
   );
 }
