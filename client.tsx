@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 
-export function NoSSR({ children }: { children: React.ReactElement }) {
-  const [state, setState] = useState<React.ReactElement | null>(null);
+export function NoSSR({
+  children,
+  fallback,
+}: {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}) {
+  const [state, setState] = useState<React.ReactNode>(fallback);
   useEffect(() => setState(children), [children]);
   return <>{state}</>;
 }
