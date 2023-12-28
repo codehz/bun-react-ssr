@@ -26,7 +26,6 @@ const match = globalX.__ROUTES__
 
 async function fetchServerSideProps(pathname: string) {
   const response = await fetch(pathname, {
-    method: "POST",
     headers: {
       Accept: "application/vnd.server-side-props",
       "Cache-Control": "no-cache",
