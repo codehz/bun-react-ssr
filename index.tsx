@@ -50,7 +50,7 @@ export class StaticRouters {
       preloadScript?: string;
       bootstrapModules?: string[];
       context?: T;
-      onError(error: unknown, errorInfo: React.ErrorInfo): string | void;
+      onError?(error: unknown, errorInfo: React.ErrorInfo): string | void;
     }
   ): Promise<Response | null> {
     const { pathname, search } = new URL(request.url);
