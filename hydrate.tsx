@@ -28,7 +28,10 @@ export async function hydrate(
   return hydrateRoot(
     document,
     <RouterHost Shell={Shell} {...options}>
-      <Shell {...globalX.__SERVERSIDE_PROPS__}>
+      <Shell
+        route={globalX.__INITIAL_ROUTE__}
+        {...globalX.__SERVERSIDE_PROPS__}
+      >
         <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />
       </Shell>
     </RouterHost>,

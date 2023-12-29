@@ -69,7 +69,7 @@ export const RouterHost = ({
   onRouteUpdated,
 }: {
   children: React.ReactElement;
-  Shell: React.ComponentType<{ children: React.ReactElement }>;
+  Shell: React.ComponentType<{ children: React.ReactElement; route?: string }>;
   onRouteUpdated?: (path: string) => void;
 }) => {
   const pathname = useLocationProperty(
@@ -95,7 +95,7 @@ export const RouterHost = ({
             onRouteUpdated?.(target);
             setVersion(currentVersion);
             setCurrent(
-              <Shell {...props}>
+              <Shell route={target} {...props}>
                 <module.default {...props?.props} />
               </Shell>
             );

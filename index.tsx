@@ -89,7 +89,7 @@ export class StaticRouters {
       });
     }
     const stream = await renderToReadableStream(
-      <Shell {...result}>
+      <Shell route={serverSide.pathname + search} {...result}>
         <module.default {...result?.props} />
       </Shell>,
       {
