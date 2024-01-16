@@ -79,6 +79,7 @@ export class StaticRouters {
       return new Response(stringified, {
         headers: {
           "Content-Type": "application/vnd.server-side-props",
+          "Cache-Control": "no-store",
         },
       });
     }
@@ -108,7 +109,10 @@ export class StaticRouters {
       }
     );
     return new Response(stream, {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
     });
   }
 }
