@@ -59,6 +59,26 @@ export const useLoadingEffect = (
 };
 
 /**
+ * a hook that runs an effect when the version changes, which is incremented on each route change or reload.
+ * and skips the first run.
+ * @param effect the effect to run
+ * @param deps the dependencies
+ */
+export const useReloadEffect = (
+  effect: React.EffectCallback,
+  deps: React.DependencyList = []
+) => {
+  const [once, setOnce] = useState(true);
+  useEffect(() => {
+    if (once) {
+      setOnce(false);
+      return;
+    }
+    return effect();
+  }, [useContext(VersionContext), ...deps]);
+};
+
+/**
  * a context that can be used to reload the current page
  */
 export const ReloadContext = createContext(async (): Promise<void> => {});
