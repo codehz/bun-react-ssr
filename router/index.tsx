@@ -98,7 +98,7 @@ export function useRouteState<T extends {}>(key: string, initial: T) {
     const routeState = history.state ?? {};
     history.replaceState({ ...routeState, [key]: newvalue }, "");
     return newvalue;
-  }, (history.state?.[key] ?? initial) as unknown as T);
+  }, (window?.history?.state?.[key] ?? initial) as unknown as T);
 }
 
 export const RouterHost = ({
