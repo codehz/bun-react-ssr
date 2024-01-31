@@ -88,7 +88,6 @@ export const ReloadContext = createContext(async (): Promise<void> => {});
  * Returns a stateful value which bounded to route, and a function to update it.
  * Note that the value won't be updated across components.
  * So you should use this only in top-most component
- * @experimental
  * @param key unique key
  * @param initial initial value
  * @returns value and setter
@@ -98,7 +97,7 @@ export function useRouteState<T extends {}>(key: string, initial: T) {
     const routeState = history.state ?? {};
     history.replaceState({ ...routeState, [key]: newvalue }, "");
     return newvalue;
-  }, (window?.history?.state?.[key] ?? initial) as unknown as T);
+  }, (globalThis.history?.state?.[key] ?? initial) as unknown as T);
 }
 
 export const RouterHost = ({
