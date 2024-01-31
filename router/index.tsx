@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useReducer,
   useRef,
   useState,
   useSyncExternalStore,
@@ -83,6 +84,25 @@ export const useReloadEffect = (
  */
 export const ReloadContext = createContext(async (): Promise<void> => {});
 
+let routeState: Record<string, any> = {};
+
+/**
+ * Returns a stateful value which bounded to route, and a function to update it.
+ * Note that the value won't be updated across components.
+ * So you should use this only in top-most component
+ * @experimental
+ * @param key unique key
+ * @param initial initial value
+ * @returns value and setter
+ */
+export function useRouteState<T extends {}>(key: string, initial: T) {
+  return useReducer((_old: T, newvalue: T) => {
+    // @ts-ignore
+    routeState[key] = newvalue;
+    return newvalue;
+  }, (routeState[key] ?? initial) as unknown as T);
+}
+
 export const RouterHost = ({
   children,
   Shell,
@@ -147,14 +167,11 @@ export const RouterHost = ({
 };
 
 const subscribeToLocationUpdates = (callback: () => void) => {
+  const abort = new AbortController();
   for (const event of events) {
-    addEventListener(event, callback);
+    window.addEventListener(event, callback, { signal: abort.signal });
   }
-  return () => {
-    for (const event of events) {
-      removeEventListener(event, callback);
-    }
-  };
+  return () => abort.abort();
 };
 
 export function useLocationProperty<S extends Location[keyof Location]>(
@@ -186,21 +203,21 @@ export const navigate = (to: string, { replace = false } = {}) =>
 const eventPopstate = "popstate";
 const eventPushState = "pushState";
 const eventReplaceState = "replaceState";
-const eventHashchange = "hashchange";
-const events = [
-  eventPopstate,
-  eventPushState,
-  eventReplaceState,
-  eventHashchange,
-];
+const events = [eventPopstate, eventPushState, eventReplaceState];
 
 if (typeof history !== "undefined") {
+  window.addEventListener("popstate", (e) => {
+    routeState = e.state ?? {};
+  });
   for (const type of [eventPushState, eventReplaceState] as const) {
     const original = history[type];
     history[type] = function (
-      ...args: Parameters<(typeof history)[typeof type]>
+      _data: any,
+      _unused: string,
+      url?: string | URL | null | undefined
     ) {
-      const result = original.apply(this, args);
+      const result = original.apply(this, [routeState, "", url]);
+      routeState = {};
       const event = new Event(type);
       unstable_batchedUpdates(() => {
         dispatchEvent(event);
