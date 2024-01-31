@@ -14,9 +14,9 @@
   "license": "MIT",
   "type": "module",
   "devDependencies": {
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "@types/web": "^0.0.119",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@types/web": "^0.0.136",
     "bun-plugin-dts": "^0.2.1",
     "bun-types": "latest"
   },
@@ -26,7 +26,7 @@
     "react-dom": "*"
   },
   "dependencies": {
-    "next-json": "^0.2.2"
+    "next-json": "^0.2.3"
   },
   "scripts": {
     "dist": "bun run scripts/dist.ts"
