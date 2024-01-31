@@ -84,8 +84,6 @@ export const useReloadEffect = (
  */
 export const ReloadContext = createContext(async (): Promise<void> => {});
 
-let routeState: Record<string, any> = {};
-
 /**
  * Returns a stateful value which bounded to route, and a function to update it.
  * Note that the value won't be updated across components.
@@ -97,10 +95,10 @@ let routeState: Record<string, any> = {};
  */
 export function useRouteState<T extends {}>(key: string, initial: T) {
   return useReducer((_old: T, newvalue: T) => {
-    // @ts-ignore
-    routeState[key] = newvalue;
+    const routeState = history.state ?? {};
+    history.replaceState({ ...routeState, [key]: newvalue }, "");
     return newvalue;
-  }, (routeState[key] ?? initial) as unknown as T);
+  }, (history.state?.[key] ?? initial) as unknown as T);
 }
 
 export const RouterHost = ({
@@ -206,18 +204,10 @@ const eventReplaceState = "replaceState";
 const events = [eventPopstate, eventPushState, eventReplaceState];
 
 if (typeof history !== "undefined") {
-  window.addEventListener("popstate", (e) => {
-    routeState = e.state ?? {};
-  });
   for (const type of [eventPushState, eventReplaceState] as const) {
     const original = history[type];
-    history[type] = function (
-      _data: any,
-      _unused: string,
-      url?: string | URL | null | undefined
-    ) {
-      const result = original.apply(this, [routeState, "", url]);
-      routeState = {};
+    history[type] = function (...args: Parameters<typeof original>) {
+      const result = original.apply(this, args);
       const event = new Event(type);
       unstable_batchedUpdates(() => {
         dispatchEvent(event);
