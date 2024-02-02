@@ -95,7 +95,8 @@ export const ReloadContext = createContext(async (): Promise<void> => {});
 export function useRouteState<T extends {}>(key: string, initial: T) {
   return useReducer((_old: T, newvalue: T) => {
     const routeState = history.state ?? {};
-    history.replaceState({ ...routeState, [key]: newvalue }, "");
+    if (routeState[key] !== newvalue)
+      history.replaceState({ ...routeState, [key]: newvalue }, "");
     return newvalue;
   }, (globalThis.history?.state?.[key] ?? initial) as unknown as T);
 }
