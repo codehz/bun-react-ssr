@@ -19,7 +19,10 @@ export async function hydrate(
   {
     onRecoverableError = () => void 8,
     ...options
-  }: Omit<React.PropsWithoutRef<typeof RouterHost>, "children" | "Shell"> & {
+  }: Omit<
+    React.ComponentPropsWithoutRef<typeof RouterHost>,
+    "Shell" | "children"
+  > & {
     onRecoverableError?: (error: unknown, errorInfo: ErrorInfo) => void;
   } = {}
 ) {
