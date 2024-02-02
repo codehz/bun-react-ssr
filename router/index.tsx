@@ -102,15 +102,17 @@ export function useRouteState<T extends {}>(key: string, initial: T) {
 
 export const RouterHost = ({
   children,
+  normalizeUrl = (url: string) => url,
   Shell,
   onRouteUpdated,
 }: {
   children: React.ReactElement;
+  normalizeUrl?: (url: string) => string;
   Shell: React.ComponentType<{ children: React.ReactElement; route?: string }>;
   onRouteUpdated?: (path: string) => void;
 }) => {
   const pathname = useLocationProperty(
-    () => location.pathname + location.search,
+    () => normalizeUrl(location.pathname + location.search),
     () => globalX.__INITIAL_ROUTE__
   );
   const [current, setCurrent] = useState(children);
