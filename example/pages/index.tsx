@@ -1,18 +1,9 @@
-import { Link, ReloadContext, useLoadingEffect } from "bun-react-ssr/router";
-import { useContext } from "react";
+import { useState } from "react";
 
 export default function Index({ time }: { time: Date }) {
-  const reload = useContext(ReloadContext);
-  useLoadingEffect(() => {
-    console.log("reload!");
-  });
-  return (
-    <div>
-      <div>time {time.toISOString()}</div>
-      <Link href="/test?test">index</Link>
-      <div onClick={() => reload()}>reload</div>
-    </div>
-  );
+  const [state, set] = useState("allo");
+
+  return <div>{state}</div>;
 }
 
 export function getServerSideProps() {

@@ -1,10 +1,14 @@
-import { FileSystemRouter } from "bun";
+import { FileSystemRouter, MatchedRoute } from "bun";
 import { NJSON } from "next-json";
 import { statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./client";
 
+/**
+ * @param options.displayMode assign a path relative display with layouts
+ * @param options.layoutName the layout page to lookup that return a default function
+ */
 export class StaticRouters {
   readonly server: FileSystemRouter;
   readonly client: FileSystemRouter;
@@ -12,8 +16,15 @@ export class StaticRouters {
 
   constructor(
     public baseDir: string,
-    public buildDir = ".build",
-    public pageDir = "pages"
+    public buildDir = ".build" as const,
+    public pageDir = "pages" as const,
+    public options: {
+      displayMode: "nextjs" | "none";
+      layoutName: string;
+    } = {
+      displayMode: "none",
+      layoutName: "layout.tsx",
+    }
   ) {
     this.server = new FileSystemRouter({
       dir: join(baseDir, pageDir),
@@ -89,31 +100,65 @@ export class StaticRouters {
         headers: { Location: result.redirect },
       });
     }
-    const stream = await renderToReadableStream(
-      <Shell route={serverSide.pathname + search} {...result}>
-        <module.default {...result?.props} />
-      </Shell>,
-      {
-        signal: request.signal,
-        bootstrapScriptContent: [
-          preloadScript,
-          `__PAGES_DIR__=${JSON.stringify(this.pageDir)}`,
-          `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
-          `__ROUTES__=${this.#routes_dump}`,
-          `__SERVERSIDE_PROPS__=${stringified}`,
-        ]
-          .filter(Boolean)
-          .join(";"),
-        bootstrapModules,
-        onError,
-      }
-    );
+    let jsxToServe: JSX.Element = <></>;
+    switch (this.options.displayMode) {
+      case "none":
+        jsxToServe = (
+          <Shell route={serverSide.pathname + search} {...result}>
+            <module.default {...result?.props} />
+          </Shell>
+        );
+      case "nextjs":
+        jsxToServe = await this.stackLayouts(serverSide);
+        break;
+    }
+
+    const stream = await renderToReadableStream(jsxToServe, {
+      signal: request.signal,
+      bootstrapScriptContent: [
+        preloadScript,
+        `__PAGES_DIR__=${JSON.stringify(this.pageDir)}`,
+        `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
+        `__ROUTES__=${this.#routes_dump}`,
+        `__SERVERSIDE_PROPS__=${stringified}`,
+      ]
+        .filter(Boolean)
+        .join(";"),
+      bootstrapModules,
+      onError,
+    });
     return new Response(stream, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
       },
     });
+  }
+  /**
+   * Next.js like module stacking
+   */
+  async stackLayouts(route: MatchedRoute) {
+    const layouts = route.pathname.split("/").slice(1);
+    let layoutsJsxList: React.ComponentType<{
+      children: React.ReactElement;
+    }>[] = [];
+    let index = 0;
+    for await (const i of layouts) {
+      const path = layouts.slice(0, index).join("/");
+      const pathToFile = `${this.baseDir}/${this.pageDir}${path}${this.options.layoutName}`;
+      console.log(path, index);
+      if (!(await Bun.file(pathToFile).exists())) continue;
+      const defaultExport = (await require(pathToFile)).default;
+      defaultExport && layoutsJsxList.push(defaultExport);
+      index += 1;
+    }
+    layoutsJsxList.push((await require(route.filePath)).default);
+    layoutsJsxList = layoutsJsxList.reverse();
+    let currentJsx: JSX.Element = <></>;
+    for await (const Layout of layoutsJsxList) {
+      currentJsx = <Layout>{currentJsx}</Layout>;
+    }
+    return currentJsx;
   }
 }
 
