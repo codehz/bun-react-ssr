@@ -16,8 +16,8 @@ export class StaticRouters {
 
   constructor(
     public baseDir: string,
-    public buildDir = ".build" as const,
-    public pageDir = "pages" as const,
+    public buildDir = ".build",
+    public pageDir = "pages",
     public options: {
       displayMode: "nextjs" | "none";
       layoutName: string;
