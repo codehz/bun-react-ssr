@@ -4,13 +4,17 @@
   "private": "true",
   "repository": {
     "type": "git",
-    "url": "https://github.com/codehz/bun-react-ssr"
+    "url": "https://github.com/shpaw415/bun-react-ssr"
   },
   "author": {
     "name": "CodeHz",
     "email": "git@hertz.moe"
   },
-  "keywords": ["bun", "react", "ssr"],
+  "keywords": [
+    "bun",
+    "react",
+    "ssr"
+  ],
   "license": "MIT",
   "type": "module",
   "devDependencies": {

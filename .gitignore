@@ -178,3 +178,4 @@ example/.build
 dist
 
 git.sh
+bunpm.json

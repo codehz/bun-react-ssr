@@ -19,7 +19,7 @@ await Bun.build({
   splitting: true,
   sourcemap: "inline",
   external: ["react", "react-dom"],
-  entrypoints: [...(await glob("*.ts"))],
+  entrypoints: [...(await glob("src/*.ts"))],
   plugins: [dts()],
 });
 
