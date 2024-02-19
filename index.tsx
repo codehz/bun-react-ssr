@@ -3,9 +3,9 @@ import { NJSON } from "next-json";
 import { statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
-import { ClientOnlyError } from "./client";
-import { _DisplayMode } from "./types";
-
+import { ClientOnlyError } from "./src/client";
+import { _DisplayMode } from "./src/types";
+export * from "./src";
 /**
  * @param options.displayMode assign a path relative display with layouts
  * @param options.layoutName the layout page to lookup that return a default function

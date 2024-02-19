@@ -1,6 +1,6 @@
 import { hydrateRoot, type ErrorInfo } from "react-dom/client";
-import { RouterHost } from "./router";
-import { getRouteMatcher } from "./router/utils/get-route-matcher";
+import { RouterHost } from "../router";
+import { getRouteMatcher } from "../router/utils/get-route-matcher";
 import { ServerSideProps, _DisplayMode } from "./types";
 
 type _GlobalData = {
@@ -33,22 +33,21 @@ export async function hydrate(
   const matched = match(globalX.__INITIAL_ROUTE__.split("?")[0])!;
   const Initial = await import(matched.value);
 
-  let JsxToDisplay: JSX.Element = <></>;
+  let JsxToDisplay: JSX.Element = (
+    <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />
+  );
 
   switch (globalX.__DISPLAY_MODE__) {
-    case "none":
-      JsxToDisplay = (
-        <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />
-      );
-      break;
     case "nextjs":
       JsxToDisplay = await LayoutStacker({
-        pageJsx: <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />,
+        pageJsx: JsxToDisplay,
         global: globalX,
         matched: matched,
       });
       break;
   }
+
+  console.log(matched.value);
 
   return hydrateRoot(
     document,
@@ -86,6 +85,8 @@ async function LayoutStacker({
     const Layout__ = await import(layoutPath);
     return <Layout__>{pageJsx}</Layout__>;
   }
+  console.log("what???");
+
   console.log(global.__ROUTES__, matched, global.__LAYOUT_NAME__);
   return <></>;
 }
