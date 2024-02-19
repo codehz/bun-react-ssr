@@ -4,6 +4,7 @@ import { statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./client";
+import { _DisplayMode } from "./types";
 
 /**
  * @param options.displayMode assign a path relative display with layouts
@@ -19,7 +20,7 @@ export class StaticRouters {
     public buildDir = ".build",
     public pageDir = "pages",
     public options: {
-      displayMode: "nextjs" | "none";
+      displayMode: _DisplayMode;
       layoutName: string;
     } = {
       displayMode: "none",
@@ -110,6 +111,11 @@ export class StaticRouters {
         );
       case "nextjs":
         jsxToServe = await this.stackLayouts(serverSide);
+        jsxToServe = (
+          <Shell route={serverSide.pathname + search} {...result}>
+            jsxToServe
+          </Shell>
+        );
         break;
     }
 
@@ -121,6 +127,7 @@ export class StaticRouters {
         `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
         `__ROUTES__=${this.#routes_dump}`,
         `__SERVERSIDE_PROPS__=${stringified}`,
+        `__DISPLAY_MODE__=${this.options.displayMode}`,
       ]
         .filter(Boolean)
         .join(";"),
@@ -145,14 +152,23 @@ export class StaticRouters {
     let index = 0;
     for await (const i of layouts) {
       const path = layouts.slice(0, index).join("/");
-      const pathToFile = `${this.baseDir}/${this.pageDir}${path}${this.options.layoutName}`;
+      const pathToFile = `${this.baseDir}/${this.pageDir}/${path}${this.options.layoutName}`;
       console.log(path, index);
       if (!(await Bun.file(pathToFile).exists())) continue;
       const defaultExport = (await require(pathToFile)).default;
+      if (!defaultExport)
+        throw new Error(
+          `no default export in ${relative(process.cwd(), route.filePath)}`
+        );
       defaultExport && layoutsJsxList.push(defaultExport);
       index += 1;
     }
-    layoutsJsxList.push((await require(route.filePath)).default);
+    const pageDefaultExport = (await require(route.filePath)).default;
+    if (!pageDefaultExport)
+      throw new Error(
+        `no default export in ${relative(process.cwd(), route.filePath)}`
+      );
+    layoutsJsxList.push(pageDefaultExport);
     layoutsJsxList = layoutsJsxList.reverse();
     let currentJsx: JSX.Element = <></>;
     for await (const Layout of layoutsJsxList) {

@@ -1,13 +1,14 @@
 import { hydrateRoot, type ErrorInfo } from "react-dom/client";
 import { RouterHost } from "./router";
 import { getRouteMatcher } from "./router/utils/get-route-matcher";
-import { ServerSideProps } from "./types";
+import { ServerSideProps, _DisplayMode } from "./types";
 
 const globalX = globalThis as unknown as {
   __PAGES_DIR__: string;
   __INITIAL_ROUTE__: string;
   __ROUTES__: Record<string, string>;
   __SERVERSIDE_PROPS__?: any;
+  __DISPLAY_MODE__: _DisplayMode;
 };
 
 const match = getRouteMatcher(globalX.__ROUTES__);
