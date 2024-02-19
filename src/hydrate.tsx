@@ -47,8 +47,6 @@ export async function hydrate(
       break;
   }
 
-  console.log(matched.value);
-
   return hydrateRoot(
     document,
     <RouterHost Shell={Shell} {...options}>
@@ -80,13 +78,30 @@ async function LayoutStacker({
   global: _GlobalData;
   matched: _MatchedStruct;
 }) {
-  const layoutPath = global.__ROUTES__[global.__LAYOUT_NAME__];
+  const layoutPath = global.__ROUTES__["/" + global.__LAYOUT_NAME__];
   if (matched.path === "/" && typeof layoutPath !== "undefined") {
     const Layout__ = await import(layoutPath);
-    return <Layout__>{pageJsx}</Layout__>;
+    return <Layout__.default children={pageJsx} />;
   }
-  console.log("what???");
+  const splitedRoute = matched.path.split("/");
+  let index = 1;
+  let defaultImports: any[] = [];
+  const formatedRoutes = Object.keys(global.__ROUTES__)
+    .map((e) => `/${global.__PAGES_DIR__}${e}`)
+    .filter((e) => e.includes(global.__LAYOUT_NAME__));
+  for await (const i of splitedRoute) {
+    const request = `/${global.__PAGES_DIR__}${splitedRoute
+      .slice(0, index)
+      .join("/")}/${global.__LAYOUT_NAME__}`;
+    if (!formatedRoutes.includes(request)) continue;
+    defaultImports.push(await import(request + ".js"));
+    index++;
+  }
 
-  console.log(global.__ROUTES__, matched, global.__LAYOUT_NAME__);
-  return <></>;
+  let currentJsx: JSX.Element = pageJsx;
+  defaultImports = defaultImports.reverse();
+  for await (const El of defaultImports) {
+    currentJsx = <El.default children={currentJsx} />;
+  }
+  return currentJsx;
 }
