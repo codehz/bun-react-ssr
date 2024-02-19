@@ -1,4 +1,5 @@
 import { lazy as oldLazy, useEffect, useState } from "react";
+import React from "react";
 
 /** @deprecated use lazy with suspense */
 export function NoSSR({

@@ -5,6 +5,7 @@ import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./src/client";
 import { _DisplayMode } from "./src/types";
+import React from "react";
 export * from "./src";
 /**
  * @param options.displayMode assign a path relative display with layouts
