@@ -104,36 +104,35 @@ export class StaticRouters {
     let jsxToServe: JSX.Element = <></>;
     switch (this.options.displayMode) {
       case "none":
-        jsxToServe = (
-          <Shell route={serverSide.pathname + search} {...result}>
-            <module.default {...result?.props} />
-          </Shell>
-        );
+        jsxToServe = <module.default {...result?.props} />;
       case "nextjs":
         jsxToServe = await this.stackLayouts(serverSide);
-        jsxToServe = (
-          <Shell route={serverSide.pathname + search} {...result}>
-            jsxToServe
-          </Shell>
-        );
         break;
     }
 
-    const stream = await renderToReadableStream(jsxToServe, {
-      signal: request.signal,
-      bootstrapScriptContent: [
-        preloadScript,
-        `__PAGES_DIR__=${JSON.stringify(this.pageDir)}`,
-        `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
-        `__ROUTES__=${this.#routes_dump}`,
-        `__SERVERSIDE_PROPS__=${stringified}`,
-        `__DISPLAY_MODE__=${JSON.stringify(this.options.displayMode)}`,
-      ]
-        .filter(Boolean)
-        .join(";"),
-      bootstrapModules,
-      onError,
-    });
+    const stream = await renderToReadableStream(
+      <Shell route={serverSide.pathname + search} {...result}>
+        {jsxToServe}
+      </Shell>,
+      {
+        signal: request.signal,
+        bootstrapScriptContent: [
+          preloadScript,
+          `__PAGES_DIR__=${JSON.stringify(this.pageDir)}`,
+          `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
+          `__ROUTES__=${this.#routes_dump}`,
+          `__SERVERSIDE_PROPS__=${stringified}`,
+          `__DISPLAY_MODE__=${JSON.stringify(this.options.displayMode)}`,
+          `__LAYOUT_NAME__=${JSON.stringify(
+            this.options.layoutName.split(".")[0]
+          )}`,
+        ]
+          .filter(Boolean)
+          .join(";"),
+        bootstrapModules,
+        onError,
+      }
+    );
     return new Response(stream, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
