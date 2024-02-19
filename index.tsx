@@ -6,7 +6,6 @@ import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./src/client";
 import { _DisplayMode } from "./src/types";
 import React from "react";
-export * from "./src";
 /**
  * @param options.displayMode assign a path relative display with layouts
  * @param options.layoutName the layout page to lookup that return a default function
