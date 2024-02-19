@@ -5,7 +5,7 @@ import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./src/client";
 import { _DisplayMode } from "./src/types";
-import React, { Children } from "react";
+import React from "react";
 /**
  * @param options.displayMode assign a path relative display with layouts
  * @param options.layoutName the layout page to lookup that return a default function
@@ -156,7 +156,6 @@ export class StaticRouters {
     for await (const i of layouts) {
       const path = layouts.slice(0, index).join("/");
       const pathToFile = `${this.baseDir}/${this.pageDir}/${path}${this.options.layoutName}`;
-      console.log(path, index);
       if (!(await Bun.file(pathToFile).exists())) continue;
       const defaultExport = (await require(pathToFile)).default;
       if (!defaultExport)

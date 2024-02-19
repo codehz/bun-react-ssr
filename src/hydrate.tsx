@@ -33,13 +33,13 @@ export async function hydrate(
   const matched = match(globalX.__INITIAL_ROUTE__.split("?")[0])!;
   const Initial = await import(matched.value);
 
-  let JsxToDisplay: JSX.Element = (
-    <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />
-  );
+  let JsxToDisplay: JSX.Element = await Initial.default({
+    ...globalX.__SERVERSIDE_PROPS__?.props,
+  });
 
   switch (globalX.__DISPLAY_MODE__) {
     case "nextjs":
-      JsxToDisplay = await LayoutStacker({
+      JsxToDisplay = await NextJsLayoutStacker({
         pageJsx: JsxToDisplay,
         global: globalX,
         matched: matched,
@@ -69,7 +69,7 @@ type _MatchedStruct = {
   };
 };
 
-async function LayoutStacker({
+async function NextJsLayoutStacker({
   pageJsx,
   global,
   matched,
@@ -81,7 +81,7 @@ async function LayoutStacker({
   const layoutPath = global.__ROUTES__["/" + global.__LAYOUT_NAME__];
   if (matched.path === "/" && typeof layoutPath !== "undefined") {
     const Layout__ = await import(layoutPath);
-    return <Layout__.default children={pageJsx} />;
+    return await Layout__.default({ children: pageJsx });
   }
   const splitedRoute = matched.path.split("/");
   let index = 1;
@@ -101,7 +101,7 @@ async function LayoutStacker({
   let currentJsx: JSX.Element = pageJsx;
   defaultImports = defaultImports.reverse();
   for await (const El of defaultImports) {
-    currentJsx = <El.default children={currentJsx} />;
+    currentJsx = await El.default({ children: currentJsx });
   }
   return currentJsx;
 }
