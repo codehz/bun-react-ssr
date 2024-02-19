@@ -127,7 +127,7 @@ export class StaticRouters {
         `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
         `__ROUTES__=${this.#routes_dump}`,
         `__SERVERSIDE_PROPS__=${stringified}`,
-        `__DISPLAY_MODE__=${this.options.displayMode}`,
+        `__DISPLAY_MODE__=${JSON.stringify(this.options.displayMode)}`,
       ]
         .filter(Boolean)
         .join(";"),
