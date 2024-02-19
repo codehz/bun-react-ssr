@@ -5,7 +5,7 @@ import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./src/client";
 import { _DisplayMode } from "./src/types";
-import React from "react";
+import React, { Children } from "react";
 /**
  * @param options.displayMode assign a path relative display with layouts
  * @param options.layoutName the layout page to lookup that return a default function
@@ -145,9 +145,13 @@ export class StaticRouters {
    */
   async stackLayouts(route: MatchedRoute) {
     const layouts = route.pathname.split("/").slice(1);
-    let layoutsJsxList: React.ComponentType<{
-      children: React.ReactElement;
-    }>[] = [];
+    type _layout = ({ children }: { children: JSX.Element }) => JSX.Element;
+    type _layoutPromise = ({
+      children,
+    }: {
+      children: JSX.Element;
+    }) => Promise<JSX.Element>;
+    let layoutsJsxList: Array<_layout | _layoutPromise> = [];
     let index = 0;
     for await (const i of layouts) {
       const path = layouts.slice(0, index).join("/");
@@ -171,7 +175,7 @@ export class StaticRouters {
     layoutsJsxList = layoutsJsxList.reverse();
     let currentJsx: JSX.Element = <></>;
     for await (const Layout of layoutsJsxList) {
-      currentJsx = <Layout>{currentJsx}</Layout>;
+      currentJsx = await Layout({ children: currentJsx });
     }
     return currentJsx;
   }
