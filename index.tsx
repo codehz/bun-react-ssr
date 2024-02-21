@@ -1,15 +1,11 @@
-import { FileSystemRouter, MatchedRoute } from "bun";
+import { FileSystemRouter, type MatchedRoute } from "bun";
 import { NJSON } from "next-json";
 import { statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./src/client";
-import { _DisplayMode } from "./src/types";
-import React from "react";
-/**
- * @param options.displayMode assign a path relative display with layouts
- * @param options.layoutName the layout page to lookup that return a default function
- */
+import type { _DisplayMode } from "./src/types";
+
 export class StaticRouters {
   readonly server: FileSystemRouter;
   readonly client: FileSystemRouter;
@@ -101,12 +97,17 @@ export class StaticRouters {
         headers: { Location: result.redirect },
       });
     }
+
     let jsxToServe: JSX.Element = <></>;
     switch (this.options.displayMode) {
       case "none":
         jsxToServe = <module.default {...result?.props} />;
+        break;
       case "nextjs":
-        jsxToServe = await this.stackLayouts(serverSide);
+        jsxToServe = await this.stackLayouts(
+          serverSide,
+          <module.default {...result?.props} />
+        );
         break;
     }
 
@@ -140,10 +141,11 @@ export class StaticRouters {
       },
     });
   }
+
   /**
    * Next.js like module stacking
    */
-  async stackLayouts(route: MatchedRoute) {
+  async stackLayouts(route: MatchedRoute, pageElement: JSX.Element) {
     const layouts = route.pathname.split("/").slice(1);
     type _layout = ({ children }: { children: JSX.Element }) => JSX.Element;
     type _layoutPromise = ({
@@ -151,13 +153,14 @@ export class StaticRouters {
     }: {
       children: JSX.Element;
     }) => Promise<JSX.Element>;
+
     let layoutsJsxList: Array<_layout | _layoutPromise> = [];
     let index = 0;
     for await (const i of layouts) {
       const path = layouts.slice(0, index).join("/");
       const pathToFile = `${this.baseDir}/${this.pageDir}/${path}${this.options.layoutName}`;
       if (!(await Bun.file(pathToFile).exists())) continue;
-      const defaultExport = (await require(pathToFile)).default;
+      const defaultExport = (await import(pathToFile)).default;
       if (!defaultExport)
         throw new Error(
           `no default export in ${relative(process.cwd(), route.filePath)}`
@@ -165,12 +168,7 @@ export class StaticRouters {
       defaultExport && layoutsJsxList.push(defaultExport);
       index += 1;
     }
-    const pageDefaultExport = (await require(route.filePath)).default;
-    if (!pageDefaultExport)
-      throw new Error(
-        `no default export in ${relative(process.cwd(), route.filePath)}`
-      );
-    layoutsJsxList.push(pageDefaultExport);
+    layoutsJsxList.push(() => pageElement);
     layoutsJsxList = layoutsJsxList.reverse();
     let currentJsx: JSX.Element = <></>;
     for await (const Layout of layoutsJsxList) {
