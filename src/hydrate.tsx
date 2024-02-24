@@ -1,3 +1,4 @@
+"use client";
 import { hydrateRoot, type ErrorInfo } from "react-dom/client";
 import { RouterHost } from "../router";
 import { getRouteMatcher } from "../router/utils/get-route-matcher";
@@ -40,13 +41,12 @@ export async function hydrate(
   switch (globalX.__DISPLAY_MODE__) {
     case "nextjs":
       JsxToDisplay = await NextJsLayoutStacker({
-        pageJsx: <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />,
+        pageJsx: JsxToDisplay,
         global: globalX,
         matched: matched,
       });
       break;
   }
-
   return hydrateRoot(
     document,
     <RouterHost Shell={Shell} {...options}>

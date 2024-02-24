@@ -4,7 +4,15 @@ import { statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./src/client";
-import type { _DisplayMode } from "./src/types";
+import type { _DisplayMode, _SsrMode } from "./src/types";
+
+declare global {
+  var pages: Array<{
+    page: Promise<Blob>;
+    path: string;
+  }>;
+}
+globalThis.pages ??= [];
 
 export class StaticRouters {
   readonly server: FileSystemRouter;
@@ -17,10 +25,12 @@ export class StaticRouters {
     public pageDir = "pages",
     public options: {
       displayMode: _DisplayMode;
+      ssrMode: _SsrMode;
       layoutName: string;
     } = {
       displayMode: "none",
       layoutName: "layout.tsx",
+      ssrMode: "none",
     }
   ) {
     this.server = new FileSystemRouter({
@@ -75,6 +85,7 @@ export class StaticRouters {
         "No client-side script found for server-side component: " +
           serverSide.filePath
       );
+
     const module = await import(serverSide.filePath);
     const result = await module.getServerSideProps?.({
       params: serverSide.params,
@@ -91,6 +102,40 @@ export class StaticRouters {
         },
       });
     }
+
+    const renderOptionData = {
+      signal: request.signal,
+      bootstrapScriptContent: [
+        preloadScript,
+        `__PAGES_DIR__=${JSON.stringify(this.pageDir)}`,
+        `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
+        `__ROUTES__=${this.#routes_dump}`,
+        `__SERVERSIDE_PROPS__=${stringified}`,
+        `__DISPLAY_MODE__=${JSON.stringify(this.options.displayMode)}`,
+        `__LAYOUT_NAME__=${JSON.stringify(
+          this.options.layoutName.split(".")[0]
+        )}`,
+      ]
+        .filter(Boolean)
+        .join(";"),
+      bootstrapModules,
+      onError,
+    };
+
+    if (this.options.ssrMode === "nextjs") {
+      const page = globalThis.pages.find(
+        (p) => p.path === serverSide.pathname
+      )?.page;
+      if (page) {
+        return new Response((await page).stream(), {
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store",
+          },
+        });
+      }
+    }
+
     if (result?.redirect) {
       return new Response(null, {
         status: 302,
@@ -98,48 +143,42 @@ export class StaticRouters {
       });
     }
 
-    let jsxToServe: JSX.Element = <></>;
+    let jsxToServe: JSX.Element = <module.default {...result?.props} />;
     switch (this.options.displayMode) {
-      case "none":
-        jsxToServe = <module.default {...result?.props} />;
-        break;
       case "nextjs":
-        jsxToServe = await this.stackLayouts(
-          serverSide,
-          <module.default {...result?.props} />
-        );
+        jsxToServe = await this.stackLayouts(serverSide, jsxToServe);
+        break;
+    }
+    const FinalJSX = (
+      <Shell route={serverSide.pathname + search} {...result}>
+        {jsxToServe}
+      </Shell>
+    );
+    const stream = await renderToReadableStream(FinalJSX, renderOptionData);
+    const _stream = stream.tee();
+
+    switch (this.options.ssrMode) {
+      case "nextjs":
+        if (globalThis.pages.find((p) => p.path === serverSide.pathname)) break;
+        globalThis.pages.push({
+          page: Bun.readableStreamToBlob(_stream[1]),
+          path: serverSide.pathname,
+        });
         break;
     }
 
-    const stream = await renderToReadableStream(
-      <Shell route={serverSide.pathname + search} {...result}>
-        {jsxToServe}
-      </Shell>,
-      {
-        signal: request.signal,
-        bootstrapScriptContent: [
-          preloadScript,
-          `__PAGES_DIR__=${JSON.stringify(this.pageDir)}`,
-          `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
-          `__ROUTES__=${this.#routes_dump}`,
-          `__SERVERSIDE_PROPS__=${stringified}`,
-          `__DISPLAY_MODE__=${JSON.stringify(this.options.displayMode)}`,
-          `__LAYOUT_NAME__=${JSON.stringify(
-            this.options.layoutName.split(".")[0]
-          )}`,
-        ]
-          .filter(Boolean)
-          .join(";"),
-        bootstrapModules,
-        onError,
-      }
-    );
-    return new Response(stream, {
+    return new Response(_stream[0], {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
       },
     });
+  }
+
+  updateRoute(path: string) {
+    const index = globalThis.pages.findIndex((p) => p.path === path);
+    if (index == -1) return;
+    globalThis.pages.splice(index, 1);
   }
 
   /**
