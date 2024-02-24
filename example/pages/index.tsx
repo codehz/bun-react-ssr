@@ -1,9 +1,11 @@
 import { useState } from "react";
 
 export default function Index({ time }: { time: Date }) {
-  const [state, set] = useState("allo");
+  const [state, set] = useState(true);
 
-  return <div>{state}</div>;
+  return (
+    <button onClick={() => set(!state)}>{state ? "click me!" : "Wow!!"}</button>
+  );
 }
 
 export function getServerSideProps() {
