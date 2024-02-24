@@ -204,7 +204,7 @@ export class StaticRouters {
         throw new Error(
           `no default export in ${relative(process.cwd(), route.filePath)}`
         );
-      defaultExport && layoutsJsxList.push(defaultExport);
+      if (defaultExport) layoutsJsxList.push(defaultExport);
       index += 1;
     }
     layoutsJsxList.push(() => pageElement);
