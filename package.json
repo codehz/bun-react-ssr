@@ -1,7 +1,7 @@
 {
   "name": "bun-react-ssr",
   "module": "index.tsx",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/shpaw415/bun-react-ssr.git#nextjs"
