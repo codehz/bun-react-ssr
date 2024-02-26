@@ -3,13 +3,14 @@ import { hydrateRoot, type ErrorInfo } from "react-dom/client";
 import { RouterHost } from "../router";
 import { getRouteMatcher } from "../router/utils/get-route-matcher";
 import type { ServerSideProps, _DisplayMode } from "./types";
+import React from "react";
 
 type _GlobalData = {
   __PAGES_DIR__: string;
   __INITIAL_ROUTE__: string;
   __ROUTES__: Record<string, string>;
   __SERVERSIDE_PROPS__?: any;
-  __DISPLAY_MODE__: _DisplayMode;
+  __DISPLAY_MODE__: keyof _DisplayMode;
   __LAYOUT_NAME__: string;
 };
 
@@ -87,6 +88,7 @@ async function NextJsLayoutStacker({
   const layoutPath = global.__ROUTES__["/" + global.__LAYOUT_NAME__];
   if (matched.path === "/" && typeof layoutPath !== "undefined") {
     const Layout__ = await import(layoutPath);
+    console.log(Layout__);
     return await Layout__.default({ children: pageJsx });
   }
   const splitedRoute = matched.path.split("/");

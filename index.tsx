@@ -1,18 +1,28 @@
-import { FileSystemRouter, type MatchedRoute } from "bun";
+import {
+  FileSystemRouter,
+  type MatchedRoute,
+  Glob,
+  readableStreamToText,
+} from "bun";
 import { NJSON } from "next-json";
 import { statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./src/client";
 import type { _DisplayMode, _SsrMode } from "./src/types";
-
+import { normalize } from "path";
 declare global {
   var pages: Array<{
     page: Promise<Blob>;
     path: string;
   }>;
+  var serverActions: Array<{
+    path: string;
+    actions: Array<Function>;
+  }>;
 }
 globalThis.pages ??= [];
+globalThis.serverActions ??= [];
 
 export class StaticRouters {
   readonly server: FileSystemRouter;
@@ -26,10 +36,10 @@ export class StaticRouters {
     public options: {
       displayMode: _DisplayMode;
       ssrMode: _SsrMode;
-      layoutName: string;
     } = {
-      displayMode: "none",
-      layoutName: "layout.tsx",
+      displayMode: {
+        none: "none",
+      },
       ssrMode: "none",
     }
   ) {
@@ -72,6 +82,9 @@ export class StaticRouters {
     }
   ): Promise<Response | null> {
     const { pathname, search } = new URL(request.url);
+    const serverAction = await this.serverActionGetter(request);
+    if (serverAction) return serverAction;
+
     const staticResponse = await serveFromDir({
       directory: this.buildDir,
       path: pathname,
@@ -111,10 +124,14 @@ export class StaticRouters {
         `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
         `__ROUTES__=${this.#routes_dump}`,
         `__SERVERSIDE_PROPS__=${stringified}`,
-        `__DISPLAY_MODE__=${JSON.stringify(this.options.displayMode)}`,
-        `__LAYOUT_NAME__=${JSON.stringify(
-          this.options.layoutName.split(".")[0]
+        `__DISPLAY_MODE__=${JSON.stringify(
+          Object.keys(this.options.displayMode)[0]
         )}`,
+        this.options.displayMode?.nextjs
+          ? `__LAYOUT_NAME__=${JSON.stringify(
+              this.options?.displayMode?.nextjs?.layout.split(".").at(0)
+            )}`
+          : "",
       ]
         .filter(Boolean)
         .join(";"),
@@ -144,7 +161,7 @@ export class StaticRouters {
     }
 
     let jsxToServe: JSX.Element = <module.default {...result?.props} />;
-    switch (this.options.displayMode) {
+    switch (Object.keys(this.options.displayMode)[0] as keyof _DisplayMode) {
       case "nextjs":
         jsxToServe = await this.stackLayouts(serverSide, jsxToServe);
         break;
@@ -175,6 +192,33 @@ export class StaticRouters {
     });
   }
 
+  private async serverActionGetter(request: Request): Promise<Response | null> {
+    const { pathname } = new URL(request.url);
+    if (pathname !== "/ServerActionGetter") return null;
+    const reqData = this.extractServerActionHeader(request);
+    if (!reqData) return null;
+    const props = await this.extractPostData(request);
+    const module = globalThis.serverActions.find(
+      (s) => s.path === reqData.path.slice(1)
+    );
+    if (!module) return null;
+    const call = module.actions.find((f) => f.name === reqData.call);
+    if (!call) return null;
+    const result = JSON.stringify(await call(...props));
+    return new Response(result);
+  }
+  private extractServerActionHeader(request: Request) {
+    const serverActionData = request.headers.get("serveractionid")?.split(":");
+    if (!serverActionData) return null;
+    return {
+      path: serverActionData[0],
+      call: serverActionData[1],
+    };
+  }
+  private async extractPostData(request: Request) {
+    return JSON.parse(decodeURI(await request.json()));
+  }
+
   updateRoute(path: string) {
     const index = globalThis.pages.findIndex((p) => p.path === path);
     if (index == -1) return;
@@ -197,7 +241,9 @@ export class StaticRouters {
     let index = 0;
     for await (const i of layouts) {
       const path = layouts.slice(0, index).join("/");
-      const pathToFile = `${this.baseDir}/${this.pageDir}/${path}${this.options.layoutName}`;
+      const pathToFile = `${this.baseDir}/${this.pageDir}/${path}${
+        this.options.displayMode.nextjs?.layout as string
+      }`;
       if (!(await Bun.file(pathToFile).exists())) continue;
       const defaultExport = (await import(pathToFile)).default;
       if (!defaultExport)
@@ -215,6 +261,43 @@ export class StaticRouters {
     }
     return currentJsx;
   }
+
+  async InitServerActions() {
+    globalThis.serverActions = [];
+    const glob = new Glob("**/*.{ts,tsx,js,jsx}");
+    const files = Array.from(
+      glob.scanSync({
+        cwd: this.pageDir,
+        onlyFiles: true,
+      })
+    );
+
+    for await (const f of files) {
+      const filePath = normalize(`${this.pageDir}/${f}`);
+      const file = await Bun.file(filePath).text();
+      if (isUseClient(file)) continue;
+      const _module = await import(normalize(`${process.cwd()}/${filePath}`));
+      const ServerActions = Object.keys(_module).filter((f) =>
+        f.startsWith("Server")
+      );
+      globalThis.serverActions.push({
+        path: f,
+        actions: ServerActions.map((name) => _module[name]),
+      });
+    }
+    return this;
+  }
+}
+
+export function isUseClient(fileData: string) {
+  const line = fileData
+    .split("\n")
+    .filter((l) => l.trim().length > 0)
+    .at(0);
+  if (!line) return false;
+  if (line.startsWith("'use client'") || line.startsWith('"use client"'))
+    return true;
+  return false;
 }
 
 export async function serveFromDir(config: {

@@ -19,7 +19,8 @@
   "keywords": [
     "bun",
     "react",
-    "ssr"
+    "ssr",
+    "server action"
   ],
   "license": "MIT",
   "type": "module",
@@ -28,7 +29,7 @@
     "@types/react-dom": "^18.2.18",
     "@types/web": "^0.0.136",
     "bun-plugin-dts": "^0.2.1",
-    "bun-types": "latest"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5.0.0",
