@@ -1,4 +1,5 @@
-import { JSXElementConstructor } from "react";
+"use client";
+import type { JSXElementConstructor } from "react";
 import { useLink } from "..";
 
 export function Link<
