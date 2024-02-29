@@ -1,7 +1,7 @@
 import { Glob, Transpiler, fileURLToPath, pathToFileURL } from "bun";
 import { unlink } from "node:fs/promises";
 import { basename, join } from "node:path";
-import type { BunPlugin, Import, OnLoadArgs, OnLoadResult } from "bun";
+import type { BunFile, BunPlugin, Import, OnLoadArgs, OnLoadResult } from "bun";
 import { normalize } from "path";
 import { isValidElement } from "react";
 import reactElementToJSXString from "react-element-to-jsx-string";
@@ -36,6 +36,7 @@ type _Mainoptions = {
 type _bypassOptions = {
   useServer: {
     pageName: string[];
+    functionName: string[];
   };
 };
 
@@ -61,6 +62,10 @@ export class Builder {
         pageName: [
           ...(options.display?.nextjs ? [options.display.nextjs.layout] : []),
           ...(options.bypass?.useServer.pageName ?? []),
+        ],
+        functionName: [
+          "getServerSideProps",
+          ...(options.bypass?.useServer.functionName ?? []),
         ],
       },
       ...options.bypass,
@@ -97,8 +102,7 @@ export class Builder {
     globalThis.pages.splice(index, 1);
     await this.build();
   }
-  private async clearDuplicateExports(filePath: string) {
-    const file = Bun.file(filePath);
+  private async clearDuplicateExports(file: BunFile) {
     let fileContent = await file.text();
     let exports = fileContent.matchAll(/export\s*\{([\s\S]*?)\}\s*;/g);
     let _export: { exportStr: string; exportValues: string[] }[] = [];
@@ -360,10 +364,19 @@ export class Builder {
     props: OnLoadArgs;
   }) {
     let _content = "";
+    const transpiler = new Transpiler({
+      loader: "jsx",
+      target: "browser",
+    });
+
     for await (const i of exports) {
+      if (this.bypassoptions.useServer.functionName.includes(i)) continue;
       const exportName = i === "default" ? _module[i].name : i;
 
+      const reactInjection = `var jsx_dev_runtime = __toESM(require_jsx_dev_runtime(), 1);\n`;
+
       const functionStr = (_module[i].toString() as string).trim();
+      //console.log(functionStr);
       const noParamsFunctionStr = `function ${exportName}()`;
       const serverActionString = this.ServerActionPluginExt(
         _module[i],
@@ -376,9 +389,11 @@ export class Builder {
       }
 
       if (!functionStr.startsWith(noParamsFunctionStr)) {
-        const newContent = `export${
+        const newContent = `"use injection";\n${reactInjection}\nexport${
           _module[i].name === _module?.default?.name ? " default " : " "
-        }${_module[i].toString()}`;
+        }${_module[i]
+          .toString()
+          .replaceAll("jsxDEV", "jsx_dev_runtime.jsxDEV")}`;
         _content += newContent;
         continue;
       }
@@ -427,7 +442,9 @@ export class Builder {
         typeof _default?.default?.name === "undefined"
           ? ""
           : _default.default.name;
+
       let bypassNameSpace: undefined | string;
+      let _path = i.path;
       try {
         const path = import.meta.resolveSync(
           normalize(
@@ -439,9 +456,9 @@ export class Builder {
       }
       const newContent = `import { ${
         defaultName === "" ? "" : `default as ${defaultName},`
-      } ${_module.exports.filter((e) => e !== "default").join(", ")} } from "${
-        i.path
-      }.tsx${
+      } ${_module.exports
+        .filter((e) => e !== "default")
+        .join(", ")} } from "${_path}.tsx${
         typeof bypassNameSpace !== "undefined"
           ? bypassNameSpace
           : namespace ?? "?importer"
@@ -455,7 +472,7 @@ export class Builder {
       _requiredBuildoptions &
       Partial<_otherOptions>
   ) {
-    const { plugins, pageDir, define } = this.options;
+    const { plugins, define } = this.options;
     const build = await Bun.build({
       ...options,
       publicPath: "./",
@@ -474,14 +491,45 @@ export class Builder {
       splitting: true,
     });
     if (!build.success) return build;
+    await this.makePostProcessing();
+    return build;
+  }
+  private async makePostProcessing() {
     const builtFile = this.glob(
       normalize(`${this.options.baseDir}/${this.options.buildDir}`)
     );
-
+    let buildFileArray = [];
     for await (const i of builtFile) {
-      await this.clearDuplicateExports(i);
+      buildFileArray.push(i);
     }
-    return build;
+    const { runtimePath, esmPath } = await this.findUseInjectionModulePath(
+      buildFileArray
+    );
+    for await (const i of buildFileArray) {
+      const file = Bun.file(i);
+      await this.makeUseInjection({
+        file: file,
+        runtimePath: runtimePath,
+        toESMPath: esmPath,
+      });
+      await this.clearDuplicateExports(file);
+    }
+  }
+  private async findUseInjectionModulePath(files: Array<string>) {
+    const paths = {
+      runtimePath: "",
+      esmPath: "",
+    };
+    for await (const i of files) {
+      const _path = i.split(this.options.baseDir as string)[1];
+      if (!_path.includes("chunk-")) continue;
+      const _module = await import(i);
+      if (typeof _module.__toESM !== "undefined") paths.esmPath = _path;
+      if (typeof _module.require_jsx_dev_runtime !== "undefined")
+        paths.runtimePath = _path;
+    }
+
+    return paths;
   }
   private async getExternalsFromPackageJson() {
     const packageJson = JSON.parse(await Bun.file("./package.json").text());
@@ -494,6 +542,28 @@ export class Builder {
         Object.keys(packageJson[section]).forEach((_) => externals.add(_));
 
     return Array.from(externals) as string[];
+  }
+  private async makeUseInjection({
+    file,
+    runtimePath,
+    toESMPath,
+  }: {
+    file: BunFile;
+    runtimePath: string;
+    toESMPath: string;
+  }) {
+    const content = await file.text();
+
+    if (!content.split("\n").find((l) => l.startsWith('"use injection";')))
+      return;
+    const newContent = `import { require_jsx_dev_runtime } from "${normalize(
+      ["/", runtimePath.split(this.options.buildDir as string)[1]].join("/")
+    )}";\nimport { __toESM } from "${normalize(
+      ["/", toESMPath.split(this.options.buildDir as string)[1]].join("/")
+    )}"
+     ${content}`.replaceAll('"use injection";', '"bunext injected!";');
+
+    await Bun.write(file, newContent);
   }
   private glob(
     path: string,
