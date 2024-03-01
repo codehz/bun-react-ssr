@@ -215,6 +215,7 @@ export class Builder {
         build.onLoad(
           {
             filter: /\.tsx$/,
+            namespace: "file",
           },
           async (props) => {
             const pageBasePath = props.path
@@ -245,7 +246,7 @@ export class Builder {
             ///////////////////////////////////////////////////////////////////
             const content = await Bun.file(props.path).text();
             let _return = {} as OnLoadResult;
-            let compilerType: "tsx" | "jsx" | "ts" | "js" = "tsx";
+            let compilerType = props.loader;
             const makeReturn = (content: string) => {
               _return = {
                 contents: content,
@@ -295,19 +296,38 @@ export class Builder {
             const makeClientFeature = () => {
               return makeReturn(content);
             };
+
+            //console.log({ _isInPageDir, _isUseClient, path: props.path });
             if (_isInPageDir && !_isUseClient) {
               //console.log("onload: in pages (server)", props.path);
               return await makeFullServerFeature();
             } else if (_isInPageDir && _isUseClient) {
               //console.log("onload: in pages (client)", props.path);
-              return makeClientFeature();
+              return makeReturn(content);
             } else if (!_isInPageDir && !isUseClient) {
               //console.log("onload: external (server)", props.path);
               return makeReturn(content);
             } else if (!_isInPageDir && _isUseClient) {
               //console.log("onload: external (client)", props.path);
-              return makeReturn(content);
+              return makeClientFeature();
             }
+          }
+        );
+        build.onResolve(
+          {
+            filter: /\.tsx$/,
+          },
+          async ({ path }) => {
+            let realPath: undefined | string;
+            try {
+              realPath = import.meta.resolveSync(
+                path.split(".").at(0) as string
+              );
+            } catch {}
+
+            return {
+              path: realPath ?? path,
+            };
           }
         );
         build.onResolve(
@@ -407,6 +427,7 @@ export class Builder {
     }
     return _content;
   }
+  private async makeClientExport() {}
   private async importerV1({
     imported,
     props,
