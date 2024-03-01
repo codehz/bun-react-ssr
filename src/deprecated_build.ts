@@ -1,6 +1,7 @@
 import { Glob, fileURLToPath, pathToFileURL } from "bun";
 import { unlink } from "node:fs/promises";
 import { basename, join } from "node:path";
+import type { BunPlugin } from "bun";
 
 function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
@@ -33,12 +34,16 @@ export async function build({
   define?: Record<string, string>;
   plugins?: import("bun").BunPlugin[];
 }) {
+  console.log(
+    "this build method is deprecated and wont work with 'use server' and 'use client' directive... use new Builder()"
+  );
   const entrypoints = [join(baseDir, hydrate)];
   const absPageDir = join(baseDir, pageDir);
   for await (const path of glob(absPageDir)) {
     entrypoints.push(path);
   }
   const result = await Bun.build({
+    publicPath: "./",
     entrypoints,
     sourcemap,
     target: "browser",
@@ -49,49 +54,7 @@ export async function build({
       "process.env.NODE_ENV": JSON.stringify(Bun.env.NODE_ENV || "development"),
       ...define,
     },
-    plugins: [
-      ...(plugins ?? []),
-      {
-        name: "bun-react-ssr",
-        target: "browser",
-        setup(build) {
-          build.onLoad(
-            {
-              filter: new RegExp(
-                "^" + escapeRegExp(absPageDir) + "/.*" + "\\.ts[x]$"
-              ),
-            },
-            async ({ path, loader }) => {
-              const search = new URLSearchParams();
-              search.append("client", "1");
-              search.append("loader", loader);
-              return {
-                contents:
-                  "export { default } from " +
-                  JSON.stringify("./" + basename(path) + "?client"),
-                loader: "ts",
-              };
-            }
-          );
-          build.onResolve(
-            { filter: /\.ts[x]\?client$/ },
-            async ({ importer, path }) => {
-              const url = pathToFileURL(importer);
-              return {
-                path: fileURLToPath(new URL(path, url)),
-                namespace: "client",
-              };
-            }
-          );
-          build.onLoad(
-            { namespace: "client", filter: /\.ts[x]$/ },
-            async ({ path, loader }) => {
-              return { contents: await Bun.file(path).text(), loader };
-            }
-          );
-        },
-      },
-    ],
+    plugins: [...(plugins ?? []), BunReactSsrPlugin(absPageDir)],
   });
   if (result.success) {
     for await (const path of glob(join(baseDir, buildDir))) {
@@ -101,4 +64,47 @@ export async function build({
     }
   }
   return result;
+}
+
+function BunReactSsrPlugin(absPageDir: string) {
+  return {
+    name: "bun-react-ssr",
+    target: "browser",
+    setup(build) {
+      build.onLoad(
+        {
+          filter: new RegExp(
+            "^" + escapeRegExp(absPageDir) + "/.*" + "\\.ts[x]$"
+          ),
+        },
+        async ({ path, loader }) => {
+          const search = new URLSearchParams();
+          search.append("client", "1");
+          search.append("loader", loader);
+          return {
+            contents:
+              "export { default } from " +
+              JSON.stringify("./" + basename(path) + "?client"),
+            loader: "ts",
+          };
+        }
+      );
+      build.onResolve(
+        { filter: /\.ts[x]\?client$/ },
+        async ({ importer, path }) => {
+          const url = pathToFileURL(importer);
+          return {
+            path: fileURLToPath(new URL(path, url)),
+            namespace: "client",
+          };
+        }
+      );
+      build.onLoad(
+        { namespace: "client", filter: /\.ts[x]$/ },
+        async ({ path, loader }) => {
+          return { contents: await Bun.file(path).text(), loader };
+        }
+      );
+    },
+  } as BunPlugin;
 }

@@ -1,16 +1,27 @@
 {
   "name": "bun-react-ssr",
   "module": "index.tsx",
-  "private": "true",
+  "version": "0.2.3",
   "repository": {
     "type": "git",
-    "url": "https://github.com/codehz/bun-react-ssr"
+    "url": "git+https://github.com/shpaw415/bun-react-ssr.git#nextjs"
   },
   "author": {
     "name": "CodeHz",
     "email": "git@hertz.moe"
   },
-  "keywords": ["bun", "react", "ssr"],
+  "contributors": [
+    {
+      "name": "shpaw415",
+      "email": "shpaw415@gmail.com"
+    }
+  ],
+  "keywords": [
+    "bun",
+    "react",
+    "ssr",
+    "server action"
+  ],
   "license": "MIT",
   "type": "module",
   "devDependencies": {
@@ -18,7 +29,7 @@
     "@types/react-dom": "^18.2.18",
     "@types/web": "^0.0.136",
     "bun-plugin-dts": "^0.2.1",
-    "bun-types": "latest"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5.0.0",
@@ -26,7 +37,8 @@
     "react-dom": "*"
   },
   "dependencies": {
-    "next-json": "^0.2.3"
+    "next-json": "^0.2.3",
+    "react-element-to-jsx-string": "15.0.0"
   },
   "scripts": {
     "dist": "bun run scripts/dist.ts"

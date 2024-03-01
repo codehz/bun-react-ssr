@@ -1,9 +1,0 @@
-{
-  "private": true,
-  "scripts": {
-    "build": "bun run build.ts",
-    "watch": "bun run build-watch.ts",
-    "serve": "bun run index.ts",
-    "dev": "bun run --hot index.ts"
-  }
-}
