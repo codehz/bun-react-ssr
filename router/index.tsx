@@ -218,11 +218,11 @@ if (typeof history !== "undefined") {
         detail: payload,
         cancelable: true,
       });
-      let canceled = false;
+      let ok = true;
       unstable_batchedUpdates(() => {
-        canceled = dispatchEvent(before);
+        ok = dispatchEvent(before);
       });
-      if (canceled) return;
+      if (!ok) return;
       const result = original.call(this, payload.data, unused, payload.url);
       const event = new CustomEvent(type);
       unstable_batchedUpdates(() => {
