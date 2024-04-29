@@ -208,9 +208,23 @@ const events = [eventPopstate, eventPushState, eventReplaceState];
 if (typeof history !== "undefined") {
   for (const type of [eventPushState, eventReplaceState] as const) {
     const original = history[type];
-    history[type] = function (...args: Parameters<typeof original>) {
-      const result = original.apply(this, args);
-      const event = new Event(type);
+    history[type] = function (
+      data: any,
+      unused: string,
+      url?: string | URL | null | undefined
+    ) {
+      const payload = { data, url };
+      const before = new CustomEvent("before" + type, {
+        detail: payload,
+        cancelable: true,
+      });
+      let canceled = false;
+      unstable_batchedUpdates(() => {
+        canceled = dispatchEvent(before);
+      });
+      if (canceled) return;
+      const result = original.call(this, payload.data, unused, payload.url);
+      const event = new CustomEvent(type);
       unstable_batchedUpdates(() => {
         dispatchEvent(event);
       });
