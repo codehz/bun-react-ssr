@@ -111,7 +111,12 @@ export class StaticRouters {
       }
     );
     if (noStreaming) {
-      await stream.allReady;
+      return new Response(await Bun.readableStreamToBlob(stream), {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      });
     }
     return new Response(stream, {
       headers: {

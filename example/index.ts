@@ -8,6 +8,7 @@ Bun.serve({
     const response = await router.serve(request, {
       Shell: ExampleShell,
       bootstrapModules: ["/hydrate.js"],
+      noStreaming: true
     });
     if (response) return response;
     return new Response("Not found", {
