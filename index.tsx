@@ -45,12 +45,14 @@ export class StaticRouters {
         if (error instanceof ClientOnlyError) return;
         console.error(error, errorInfo);
       },
+      noStreaming,
     }: {
       Shell: React.ComponentType<{ children: React.ReactElement }>;
       preloadScript?: string;
       bootstrapModules?: string[];
       context?: T;
       onError?(error: unknown, errorInfo: React.ErrorInfo): string | void;
+      noStreaming?: boolean;
     }
   ): Promise<Response | null> {
     const { pathname, search } = new URL(request.url);
@@ -108,6 +110,9 @@ export class StaticRouters {
         onError,
       }
     );
+    if (noStreaming) {
+      await stream.allReady;
+    }
     return new Response(stream, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
