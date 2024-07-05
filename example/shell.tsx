@@ -1,10 +1,14 @@
-export const ExampleShell: React.FC<{ children: React.ReactElement }> = ({
-  children,
-}) => (
+export const ExampleShell: React.FC<{
+  children: React.ReactElement;
+  meta?: Record<string, string>;
+}> = ({ children, meta }) => (
   <html>
     <head>
       <title>Example</title>
     </head>
-    <body>{children}</body>
+    <body>
+      <div>{children}</div>
+      <output>{JSON.stringify(meta)}</output>
+    </body>
   </html>
 );

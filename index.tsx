@@ -50,6 +50,7 @@ export class StaticRouters {
       },
       noStreaming,
       staticHeaders,
+      staticProps,
     }: {
       Shell: React.ComponentType<{ children: React.ReactElement }>;
       preloadScript?: string;
@@ -58,6 +59,7 @@ export class StaticRouters {
       onError?(error: unknown, errorInfo: React.ErrorInfo): string | void;
       noStreaming?: boolean;
       staticHeaders?: HeadersInit;
+      staticProps?: Record<string, unknown>;
     }
   ): Promise<Response | null> {
     const { pathname, search } = new URL(request.url);
@@ -98,7 +100,7 @@ export class StaticRouters {
       });
     }
     const stream = await renderToReadableStream(
-      <Shell route={serverSide.pathname + search} {...result}>
+      <Shell route={serverSide.pathname + search} {...staticProps} {...result}>
         <module.default {...result?.props} />
       </Shell>,
       {
@@ -108,6 +110,7 @@ export class StaticRouters {
           `__PAGES_DIR__=${JSON.stringify(this.pageDir)}`,
           `__INITIAL_ROUTE__=${JSON.stringify(serverSide.pathname + search)}`,
           `__ROUTES__=${this.#routes_dump}`,
+          !!staticProps && `__STATIC_PROPS__=${NJSON.stringify(staticProps)}`,
           `__SERVERSIDE_PROPS__=${stringified}`,
         ]
           .filter(Boolean)

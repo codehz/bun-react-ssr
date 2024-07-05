@@ -13,6 +13,9 @@ Bun.serve({
         "x-powered-by": "bun",
         "cache-control": "max-age=14400, immutable",
       },
+      staticProps: {
+        meta: require("./.build/.meta.json").hashed,
+      },
     });
     if (response) return response;
     return new Response("Not found", {

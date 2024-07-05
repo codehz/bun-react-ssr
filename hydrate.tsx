@@ -7,6 +7,7 @@ const globalX = globalThis as unknown as {
   __PAGES_DIR__: string;
   __INITIAL_ROUTE__: string;
   __ROUTES__: Record<string, string>;
+  __STATIC_PROPS__?: Record<string, unknown>;
   __SERVERSIDE_PROPS__?: any;
 };
 
@@ -33,6 +34,7 @@ export async function hydrate(
     <RouterHost Shell={Shell} {...options}>
       <Shell
         route={globalX.__INITIAL_ROUTE__}
+        {...globalX.__STATIC_PROPS__}
         {...globalX.__SERVERSIDE_PROPS__}
       >
         <Initial.default {...globalX.__SERVERSIDE_PROPS__?.props} />
