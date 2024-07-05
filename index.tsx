@@ -9,6 +9,7 @@ export class StaticRouters {
   readonly server: FileSystemRouter;
   readonly client: FileSystemRouter;
   readonly #routes_dump: string;
+  readonly #hashed: Record<string, string>;
 
   constructor(
     public baseDir: string,
@@ -23,12 +24,14 @@ export class StaticRouters {
       dir: join(baseDir, buildDir, pageDir),
       style: "nextjs",
     });
+    this.#hashed = require(join(baseDir, buildDir, ".meta.json")).hashed;
     this.#routes_dump = NJSON.stringify(
       Object.fromEntries(
-        Object.entries(this.client.routes).map(([path, filePath]) => [
-          path,
-          "/" + relative(join(baseDir, buildDir), filePath),
-        ])
+        Object.entries(this.client.routes).map(([path, filePath]) => {
+          let target = "/" + relative(join(baseDir, buildDir), filePath);
+          if (this.#hashed[target]) target += `?${this.#hashed[target]}`;
+          return [path, target];
+        })
       ),
       { omitStack: true }
     );
@@ -46,6 +49,7 @@ export class StaticRouters {
         console.error(error, errorInfo);
       },
       noStreaming,
+      staticHeaders,
     }: {
       Shell: React.ComponentType<{ children: React.ReactElement }>;
       preloadScript?: string;
@@ -53,6 +57,7 @@ export class StaticRouters {
       context?: T;
       onError?(error: unknown, errorInfo: React.ErrorInfo): string | void;
       noStreaming?: boolean;
+      staticHeaders?: HeadersInit;
     }
   ): Promise<Response | null> {
     const { pathname, search } = new URL(request.url);
@@ -60,7 +65,8 @@ export class StaticRouters {
       directory: this.buildDir,
       path: pathname,
     });
-    if (staticResponse) return new Response(staticResponse);
+    if (staticResponse)
+      return new Response(staticResponse, { headers: staticHeaders });
     const serverSide = this.server.match(request);
     if (!serverSide) return null;
     const clientSide = this.client.match(request);
@@ -106,7 +112,11 @@ export class StaticRouters {
         ]
           .filter(Boolean)
           .join(";"),
-        bootstrapModules,
+        bootstrapModules: bootstrapModules?.map((name) => {
+          const hash = this.#hashed[name];
+          if (hash) return `${name}?${hash}`;
+          return name;
+        }),
         onError,
       }
     );

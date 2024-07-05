@@ -1,6 +1,6 @@
 import { Glob, fileURLToPath, pathToFileURL } from "bun";
 import { unlink } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, join, relative } from "node:path";
 
 function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
@@ -38,11 +38,12 @@ export async function build({
   for await (const path of glob(absPageDir)) {
     entrypoints.push(path);
   }
+  const outdir = join(baseDir, buildDir);
   const result = await Bun.build({
     entrypoints,
     sourcemap,
     target: "browser",
-    outdir: join(baseDir, buildDir),
+    outdir,
     splitting: true,
     minify,
     define: {
@@ -99,6 +100,17 @@ export async function build({
         await unlink(path);
       }
     }
+    const hashed: Record<string, string> = {};
+    for (const output of result.outputs) {
+      if (output.kind === "entry-point" && output.hash) {
+        const path = relative(outdir, output.path);
+        hashed[`/${path}`] = output.hash;
+      }
+    }
+    Bun.write(
+      join(outdir, ".meta.json"),
+      JSON.stringify({ version: 1, hashed })
+    );
   }
   return result;
 }

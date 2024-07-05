@@ -22,8 +22,8 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0",
-    "react": "*",
-    "react-dom": "*"
+    "react": "^19.0.0-rc-cc1ec60d0d-20240607",
+    "react-dom": "^19.0.0-rc-cc1ec60d0d-20240607"
   },
   "dependencies": {
     "next-json": "^0.2.3"
