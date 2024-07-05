@@ -15,9 +15,9 @@ await rm("dist", { recursive: true });
 await Bun.build({
   target: "bun",
   outdir: "dist",
-  minify: true,
+  minify: false,
   splitting: true,
-  sourcemap: "inline",
+  sourcemap: "external",
   external: ["react", "react-dom"],
   entrypoints: [...(await glob("*.ts"))],
   plugins: [dts()],
