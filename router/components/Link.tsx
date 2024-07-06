@@ -1,4 +1,4 @@
-import { JSXElementConstructor } from "react";
+import type { JSXElementConstructor } from "react";
 import { useLink } from "..";
 
 export function Link<
