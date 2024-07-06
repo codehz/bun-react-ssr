@@ -1,17 +1,8 @@
 import { Glob, fileURLToPath, pathToFileURL } from "bun";
-import { unlink } from "node:fs/promises";
 import { basename, join, relative } from "node:path";
 
 function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
-}
-
-function glob(
-  path: string,
-  pattern = "**/*.{ts,tsx,js,jsx}"
-): AsyncIterableIterator<string> {
-  const glob = new Glob(pattern);
-  return glob.scan({ cwd: path, onlyFiles: true, absolute: true });
 }
 
 export async function build({
@@ -35,7 +26,12 @@ export async function build({
 }) {
   const entrypoints = [join(baseDir, hydrate)];
   const absPageDir = join(baseDir, pageDir);
-  for await (const path of glob(absPageDir)) {
+  const entrypointGlob = new Glob("**/*.{ts,tsx,js,jsx}");
+  for await (const path of entrypointGlob.scan({
+    cwd: absPageDir,
+    onlyFiles: true,
+    absolute: true,
+  })) {
     entrypoints.push(path);
   }
   const outdir = join(baseDir, buildDir);
@@ -95,11 +91,6 @@ export async function build({
     ],
   });
   if (result.success) {
-    for await (const path of glob(join(baseDir, buildDir))) {
-      if (result.outputs.every((x) => x.path !== path)) {
-        await unlink(path);
-      }
-    }
     const hashed: Record<string, string> = {};
     for (const output of result.outputs) {
       if (output.kind === "entry-point" && output.hash) {
