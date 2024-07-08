@@ -1,7 +1,7 @@
 import { hydrateRoot, type ErrorInfo } from "react-dom/client";
 import { RouterHost } from "./router";
 import { getRouteMatcher } from "./router/utils/get-route-matcher";
-import { ServerSideProps } from "./types";
+import type { ServerSideProps } from "./types";
 
 const globalX = globalThis as unknown as {
   __PAGES_DIR__: string;
