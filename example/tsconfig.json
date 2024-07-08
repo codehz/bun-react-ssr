@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "bun-react-ssr": [".."],
+      "bun-react-ssr/*": ["../*"]
+    }
+  }
+}
