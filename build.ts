@@ -95,10 +95,7 @@ export async function build({
     for (const output of result.outputs) {
       if (output.kind === "entry-point" && output.hash) {
         const path = relative(outdir, output.path);
-        // Bun has bug that generated hash cannot reflect the changes in dynamic import
-        hashed[`/${path}`] = Bun.hash
-          .murmur64v2(await output.arrayBuffer())
-          .toString(16);
+        hashed[`/${path}`] = output.hash;
       }
     }
     Bun.write(
