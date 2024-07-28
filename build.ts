@@ -1,4 +1,4 @@
-import { Glob, fileURLToPath, pathToFileURL } from "bun";
+import { Glob, fileURLToPath, pathToFileURL, type JavaScriptLoader } from "bun";
 import { basename, join, relative } from "node:path";
 
 function escapeRegExp(string: string) {
@@ -52,6 +52,13 @@ export async function build({
         name: "bun-react-ssr",
         target: "browser",
         setup(build) {
+          // workaround for https://github.com/oven-sh/bun/issues/12892
+          const trimmer = new Bun.Transpiler({
+            deadCodeElimination: true,
+            treeShaking: true,
+            exports: { eliminate: ["getServerSideProps"] },
+            trimUnusedImports: true,
+          });
           build.onLoad(
             {
               filter: new RegExp(
@@ -59,31 +66,23 @@ export async function build({
               ),
             },
             async ({ path, loader }) => {
-              const search = new URLSearchParams();
-              search.append("client", "1");
-              search.append("loader", loader);
+              const contents = await Bun.file(path).text();
+              const tsloader = new Bun.Transpiler({
+                loader: loader as JavaScriptLoader,
+              });
+              if (
+                !tsloader.scan(contents).exports.includes("getServerSideProps")
+              ) {
+                return { contents, loader };
+              }
+              const js = await tsloader.transform(
+                await Bun.file(path).text(),
+                loader as JavaScriptLoader
+              );
               return {
-                contents:
-                  "export { default } from " +
-                  JSON.stringify("./" + basename(path) + "?client"),
-                loader: "ts",
+                contents: await trimmer.transform(js, "js"),
+                loader: "js",
               };
-            }
-          );
-          build.onResolve(
-            { filter: /\.ts[x]\?client$/ },
-            async ({ importer, path }) => {
-              const url = pathToFileURL(importer);
-              return {
-                path: fileURLToPath(new URL(path, url)),
-                namespace: "client",
-              };
-            }
-          );
-          build.onLoad(
-            { namespace: "client", filter: /\.ts[x]$/ },
-            async ({ path, loader }) => {
-              return { contents: await Bun.file(path).text(), loader };
             }
           );
         },
