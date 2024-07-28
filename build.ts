@@ -69,6 +69,7 @@ export async function build({
               const contents = await Bun.file(path).text();
               const tsloader = new Bun.Transpiler({
                 loader: loader as JavaScriptLoader,
+                autoImportJSX: true,
               });
               if (
                 !tsloader.scan(contents).exports.includes("getServerSideProps")
