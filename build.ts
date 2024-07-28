@@ -83,7 +83,14 @@ export async function build({
           build.onLoad(
             { namespace: "client", filter: /\.ts[x]$/ },
             async ({ path, loader }) => {
-              return { contents: await Bun.file(path).text(), loader };
+              const contents = await Bun.file(path).text();
+              return {
+                contents: contents.replaceAll(
+                  /\/\/\s*@server-side[^\n\S]*\n[^\n]+\n/g,
+                  ""
+                ),
+                loader,
+              };
             }
           );
         },
