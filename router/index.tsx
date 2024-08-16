@@ -106,11 +106,13 @@ export const RouterHost = ({
   normalizeUrl = (url: string) => url,
   Shell,
   onRouteUpdated,
+  staticProps,
 }: {
   children: React.ReactElement;
   normalizeUrl?: (url: string) => string;
   Shell: React.ComponentType<{ children: React.ReactElement; route?: string }>;
   onRouteUpdated?: (path: string) => void;
+  staticProps?: Record<string, unknown>;
 }) => {
   const pathname = useLocationProperty(
     () => normalizeUrl(location.pathname + location.search),
@@ -135,7 +137,7 @@ export const RouterHost = ({
             onRouteUpdated?.(target);
             setVersion(currentVersion);
             setCurrent(
-              <Shell route={target} {...props}>
+              <Shell route={target} {...staticProps} {...props}>
                 <module.default {...props?.props} />
               </Shell>
             );

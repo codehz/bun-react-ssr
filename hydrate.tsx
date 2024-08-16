@@ -31,7 +31,11 @@ export async function hydrate(
   const Initial = await import(matched.value);
   return hydrateRoot(
     document,
-    <RouterHost Shell={Shell} {...options}>
+    <RouterHost
+      Shell={Shell}
+      staticProps={globalX.__STATIC_PROPS__}
+      {...options}
+    >
       <Shell
         route={globalX.__INITIAL_ROUTE__}
         {...globalX.__STATIC_PROPS__}
