@@ -189,18 +189,17 @@ function* scanCacheDependencies(
     }).scanImports(readFileSync(target));
     for (const imp of imports) {
       if (imp.kind === "import-statement") {
-        const path = Bun.fileURLToPath(import.meta.resolve(imp.path, target));
+        const path = require.resolve(
+          Bun.fileURLToPath(import.meta.resolve(imp.path, target))
+        );
         if (
           path.includes("/node_modules/") ||
           excludes.some((x) => path.match(x))
         )
           continue;
-        const resolved = Object.keys(require.cache).find((x) =>
-          x.startsWith(path)
-        );
-        if (resolved) {
-          yield resolved;
-          yield* scanCacheDependencies(resolved, excludes);
+        if (path in require.cache) {
+          yield path;
+          yield* scanCacheDependencies(path, excludes);
         }
       }
     }
