@@ -110,6 +110,9 @@ export class StaticRouters {
         <MetaContext.Provider
           value={{ hash: this.#hashed, dependencies: this.#dependencies }}
         >
+          {bootstrapModules?.map((name, idx) => (
+            <PreloadModule key={idx} module={name} />
+          ))}
           <PreloadModule
             module={this.#routes.get(serverSide.pathname)!.split("?")[0]}
           />
