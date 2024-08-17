@@ -1,4 +1,4 @@
-import { Glob, fileURLToPath, pathToFileURL } from "bun";
+import { Glob, Transpiler, fileURLToPath, pathToFileURL } from "bun";
 import { basename, join, relative } from "node:path";
 
 function escapeRegExp(string: string) {
@@ -98,16 +98,24 @@ export async function build({
     ],
   });
   if (result.success) {
+    const transpiler = new Transpiler({ loader: "js" });
     const hashed: Record<string, string> = {};
+    const dependencies: Record<string, string[]> = {};
     for (const output of result.outputs) {
+      const path = relative(outdir, output.path);
       if (output.kind === "entry-point" && output.hash) {
-        const path = relative(outdir, output.path);
         hashed[`/${path}`] = output.hash;
+      }
+      if (output.kind === "entry-point" || output.kind === "chunk") {
+        const imports = transpiler.scanImports(await output.text());
+        dependencies[`/${path}`] = imports
+          .filter((x) => x.kind === "import-statement")
+          .map((x) => "/" + join(path, "..", x.path));
       }
     }
     Bun.write(
       join(outdir, ".meta.json"),
-      JSON.stringify({ version: 1, hashed })
+      JSON.stringify({ version: 2, hashed, dependencies })
     );
   }
   return result;

@@ -8,6 +8,8 @@
     "jsx": "react-jsx",
     "allowJs": true,
 
+    "types": ["react/canary", "react-dom/canary"],
+
     // Bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

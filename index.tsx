@@ -2,13 +2,17 @@ import { FileSystemRouter } from "bun";
 import { NJSON } from "next-json";
 import { statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { preloadModule } from "react-dom";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./client";
+import { MetaContext, PreloadModule } from "./preload";
 
 export class StaticRouters {
   readonly server: FileSystemRouter;
   readonly client: FileSystemRouter;
+  readonly #routes: Map<string, string>;
   readonly #routes_dump: string;
+  readonly #dependencies: Record<string, string[]>;
   readonly #hashed: Record<string, string>;
 
   constructor(
@@ -24,17 +28,19 @@ export class StaticRouters {
       dir: join(baseDir, buildDir, pageDir),
       style: "nextjs",
     });
-    this.#hashed = require(join(baseDir, buildDir, ".meta.json")).hashed;
-    this.#routes_dump = NJSON.stringify(
-      Object.fromEntries(
-        Object.entries(this.client.routes).map(([path, filePath]) => {
-          let target = "/" + relative(join(baseDir, buildDir), filePath);
-          if (this.#hashed[target]) target += `?${this.#hashed[target]}`;
-          return [path, target];
-        })
-      ),
-      { omitStack: true }
+    const parsed = require(join(baseDir, buildDir, ".meta.json"));
+    this.#hashed = parsed.hashed;
+    this.#dependencies = parsed.dependencies;
+    this.#routes = new Map(
+      Object.entries(this.client.routes).map(([path, filePath]) => {
+        let target = "/" + relative(join(baseDir, buildDir), filePath);
+        if (this.#hashed[target]) target += `?${this.#hashed[target]}`;
+        return [path, target];
+      })
     );
+    this.#routes_dump = NJSON.stringify(Object.fromEntries(this.#routes), {
+      omitStack: true,
+    });
   }
 
   async serve<T = void>(
@@ -101,7 +107,14 @@ export class StaticRouters {
     }
     const stream = await renderToReadableStream(
       <Shell route={serverSide.pathname + search} {...staticProps} {...result}>
-        <module.default {...result?.props} />
+        <MetaContext.Provider
+          value={{ hash: this.#hashed, dependencies: this.#dependencies }}
+        >
+          <PreloadModule
+            module={this.#routes.get(serverSide.pathname)!.split("?")[0]}
+          />
+          <module.default {...result?.props} />
+        </MetaContext.Provider>
       </Shell>,
       {
         signal: request.signal,
@@ -137,6 +150,34 @@ export class StaticRouters {
         "Cache-Control": "no-store",
       },
     });
+  }
+}
+
+function DirectPreloadModule({
+  target,
+  dependencies,
+}: {
+  target: string;
+  dependencies: Record<string, string[]>;
+}) {
+  preloadModule(target, { as: "script" });
+  preloadModule(target, { as: "script" });
+  for (const dep of walkDependencies(target, dependencies)) {
+    preloadModule(dep, { as: "script" });
+    preloadModule(dep, { as: "script" });
+  }
+  return null;
+}
+
+function* walkDependencies(
+  target: string,
+  dependencies: Record<string, string[]>
+): Generator<string> {
+  if (dependencies[target]) {
+    for (const dep of dependencies[target]) {
+      yield dep;
+      yield* walkDependencies(dep, dependencies);
+    }
   }
 }
 
