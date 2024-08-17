@@ -1,25 +1,43 @@
 import { FileSystemRouter } from "bun";
 import { NJSON } from "next-json";
-import { statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { preloadModule } from "react-dom";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./client";
 import { MetaContext, PreloadModule } from "./preload";
 
 export class StaticRouters {
-  readonly server: FileSystemRouter;
-  readonly client: FileSystemRouter;
-  readonly #routes: Map<string, string>;
-  readonly #routes_dump: string;
-  readonly #dependencies: Record<string, string[]>;
-  readonly #hashed: Record<string, string>;
+  server!: FileSystemRouter;
+  client!: FileSystemRouter;
+  #routes!: Map<string, string>;
+  #routes_dump!: string;
+  #dependencies!: Record<string, string[]>;
+  #hashed!: Record<string, string>;
+  #cached = new Set<string>();
 
   constructor(
     public baseDir: string,
     public buildDir = ".build",
     public pageDir = "pages"
   ) {
+    this.reload();
+  }
+
+  reload(excludes: RegExp[] = []) {
+    const { baseDir, pageDir, buildDir } = this;
+    const metafile = Bun.fileURLToPath(
+      import.meta.resolve(join(baseDir, buildDir, ".meta.json"))
+    );
+    delete require.cache[metafile];
+    if (this.#cached.size) {
+      for (const cached of this.#cached) {
+        delete require.cache[cached];
+        for (const dep of scanCacheDependencies(cached, excludes)) {
+          delete require.cache[dep];
+        }
+      }
+      this.#cached.clear();
+    }
     this.server = new FileSystemRouter({
       dir: join(baseDir, pageDir),
       style: "nextjs",
@@ -28,7 +46,7 @@ export class StaticRouters {
       dir: join(baseDir, buildDir, pageDir),
       style: "nextjs",
     });
-    const parsed = require(join(baseDir, buildDir, ".meta.json"));
+    const parsed = require(metafile);
     this.#hashed = parsed.hashed;
     this.#dependencies = parsed.dependencies;
     this.#routes = new Map(
@@ -83,7 +101,8 @@ export class StaticRouters {
         "No client-side script found for server-side component: " +
           serverSide.filePath
       );
-    const module = await import(serverSide.filePath);
+    const module = require(serverSide.filePath);
+    this.#cached.add(serverSide.filePath);
     const result = await module.getServerSideProps?.({
       params: serverSide.params,
       req: request,
@@ -156,32 +175,36 @@ export class StaticRouters {
   }
 }
 
-function DirectPreloadModule({
-  target,
-  dependencies,
-}: {
-  target: string;
-  dependencies: Record<string, string[]>;
-}) {
-  preloadModule(target, { as: "script" });
-  preloadModule(target, { as: "script" });
-  for (const dep of walkDependencies(target, dependencies)) {
-    preloadModule(dep, { as: "script" });
-    preloadModule(dep, { as: "script" });
-  }
-  return null;
-}
-
-function* walkDependencies(
+function* scanCacheDependencies(
   target: string,
-  dependencies: Record<string, string[]>
+  excludes: RegExp[] = []
 ): Generator<string> {
-  if (dependencies[target]) {
-    for (const dep of dependencies[target]) {
-      yield dep;
-      yield* walkDependencies(dep, dependencies);
+  try {
+    const imports = new Bun.Transpiler({
+      loader: target.endsWith(".tsx")
+        ? "tsx"
+        : target.endsWith(".ts")
+        ? "ts"
+        : "jsx",
+    }).scanImports(readFileSync(target));
+    for (const imp of imports) {
+      if (imp.kind === "import-statement") {
+        const path = Bun.fileURLToPath(import.meta.resolve(imp.path, target));
+        if (
+          path.includes("/node_modules/") ||
+          excludes.some((x) => path.match(x))
+        )
+          continue;
+        const resolved = Object.keys(require.cache).find((x) =>
+          x.startsWith(path)
+        );
+        if (resolved) {
+          yield resolved;
+          yield* scanCacheDependencies(resolved, excludes);
+        }
+      }
     }
-  }
+  } catch {}
 }
 
 export async function serveFromDir(config: {
