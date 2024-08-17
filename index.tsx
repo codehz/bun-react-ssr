@@ -101,7 +101,7 @@ export class StaticRouters {
         "No client-side script found for server-side component: " +
           serverSide.filePath
       );
-    const module = require(serverSide.filePath);
+    const module = await import(serverSide.filePath);
     this.#cached.add(serverSide.filePath);
     const result = await module.getServerSideProps?.({
       params: serverSide.params,
