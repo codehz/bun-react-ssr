@@ -133,7 +133,7 @@ export class StaticRouters {
             <PreloadModule key={idx} module={name} />
           ))}
           <PreloadModule
-            module={this.#routes.get(serverSide.pathname)!.split("?")[0]}
+            module={this.#routes.get(serverSide.name)!.split("?")[0]}
           />
           <module.default {...result?.props} />
         </MetaContext.Provider>
