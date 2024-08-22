@@ -1,7 +1,7 @@
-import { FileSystemRouter } from "bun";
+import { FileSystemRouter, type BunFile } from "bun";
 import { NJSON } from "next-json";
 import { readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, normalize } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./client";
 import { MetaContext, PreloadModule } from "./preload";
@@ -14,12 +14,25 @@ export class StaticRouters {
   #dependencies!: Record<string, string[]>;
   #hashed!: Record<string, string>;
   #cached = new Set<string>();
+  #static_cache: StaticFileCache;
+  public baseDir: string;
+  public buildDir = ".build";
+  public pageDir = "pages";
 
   constructor(
-    public baseDir: string,
-    public buildDir = ".build",
-    public pageDir = "pages"
+    base: string,
+    {
+      buildDir = ".build",
+      pageDir = "pages",
+    }: {
+      buildDir?: string;
+      pageDir?: string;
+    } = {}
   ) {
+    this.baseDir = base;
+    this.buildDir = buildDir;
+    this.pageDir = pageDir;
+    this.#static_cache = new StaticFileCache(join(base, buildDir));
     this.reload();
   }
 
@@ -59,6 +72,7 @@ export class StaticRouters {
     this.#routes_dump = NJSON.stringify(Object.fromEntries(this.#routes), {
       omitStack: true,
     });
+    this.#static_cache.reset();
   }
 
   async serve<T = void>(
@@ -87,12 +101,10 @@ export class StaticRouters {
     }
   ): Promise<Response | null> {
     const { pathname, search } = new URL(request.url);
-    const staticResponse = await serveFromDir({
-      directory: this.buildDir,
-      path: pathname,
-    });
-    if (staticResponse)
-      return new Response(staticResponse, { headers: staticHeaders });
+    const file = this.#static_cache.match(pathname);
+    if (file) {
+      return new Response(file, { headers: staticHeaders });
+    }
     const serverSide = this.server.match(request);
     if (!serverSide) return null;
     const clientSide = this.client.match(request);
@@ -206,6 +218,29 @@ function* scanCacheDependencies(
   } catch {}
 }
 
+export class StaticFileCache {
+  #cache = new Map<string, BunFile>();
+  constructor(public base: string) {}
+  reset() {
+    this.#cache.clear();
+  }
+  match(pathname: string): BunFile | undefined {
+    if (this.#cache.has(pathname)) {
+      return this.#cache.get(pathname)!;
+    }
+    const final = join(this.base, pathname);
+    try {
+      const stat = statSync(final);
+      if (stat?.isFile()) {
+        const file = Bun.file(final);
+        this.#cache.set(pathname, file);
+        return file;
+      }
+    } catch {}
+  }
+}
+
+/** @deprecated */
 export async function serveFromDir(config: {
   directory: string;
   path: string;
