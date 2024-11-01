@@ -1,9 +1,10 @@
 import { FileSystemRouter, type BunFile } from "bun";
 import { NJSON } from "next-json";
 import { readFileSync, statSync } from "node:fs";
-import { join, parse, relative } from "node:path";
+import { join, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./client";
+import { hashremap } from "./hash";
 import { MetaContext, PreloadModule } from "./preload";
 
 export class StaticRouters {
@@ -223,11 +224,6 @@ function* scanCacheDependencies(
       }
     }
   } catch {}
-}
-
-function hashremap(input: string, hash: string) {
-  const parsed = parse(input);
-  return `${join(parsed.dir, parsed.name)}-${hash}${parsed.ext}`;
 }
 
 export class StaticFileCache {

@@ -1,5 +1,6 @@
 import { createContext, use } from "react";
 import { preloadModule, type PreloadModuleOptions } from "react-dom";
+import { generateHashedName } from "./hash";
 
 // @ignore
 export const MetaContext = createContext<{
@@ -17,10 +18,6 @@ function* walkDependencies(
       yield* walkDependencies(dep, dependencies);
     }
   }
-}
-
-function generateHashedName(name: string, hash: Record<string, string>) {
-  return hash[name] ? `${name}?${hash[name]}` : name;
 }
 
 export function PreloadModule({
