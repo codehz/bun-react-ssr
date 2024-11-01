@@ -1,7 +1,7 @@
 import { FileSystemRouter, type BunFile } from "bun";
 import { NJSON } from "next-json";
 import { readFileSync, statSync } from "node:fs";
-import { join, relative, normalize } from "node:path";
+import { join, parse, relative } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 import { ClientOnlyError } from "./client";
 import { MetaContext, PreloadModule } from "./preload";
@@ -62,17 +62,24 @@ export class StaticRouters {
     const parsed = require(metafile);
     this.#hashed = parsed.hashed;
     this.#dependencies = parsed.dependencies;
-    this.#routes = new Map(
-      Object.entries(this.client.routes).map(([path, filePath]) => {
-        let target = "/" + relative(join(baseDir, buildDir), filePath);
-        if (this.#hashed[target]) target += `?${this.#hashed[target]}`;
-        return [path, target];
-      })
-    );
+    this.#routes = new Map<string, string>();
+    this.#static_cache.reset();
+    for (const [path, filePath] of Object.entries(this.client.routes)) {
+      const target = "/" + relative(join(baseDir, buildDir), filePath);
+      const converted = this.#hashed[target]
+        ? hashremap(target, this.#hashed[target])
+        : target;
+      this.#routes.set(path, converted);
+    }
+    for (const [file, hash] of Object.entries(this.#hashed)) {
+      this.#static_cache.remap(
+        hashremap(file, hash),
+        join(baseDir, buildDir, file)
+      );
+    }
     this.#routes_dump = NJSON.stringify(Object.fromEntries(this.#routes), {
       omitStack: true,
     });
-    this.#static_cache.reset();
   }
 
   async serve<T = void>(
@@ -164,7 +171,7 @@ export class StaticRouters {
           .join(";"),
         bootstrapModules: bootstrapModules?.map((name) => {
           const hash = this.#hashed[name];
-          if (hash) return `${name}?${hash}`;
+          if (hash) return hashremap(name, hash);
           return name;
         }),
         onError,
@@ -198,7 +205,7 @@ function* scanCacheDependencies(
         : target.endsWith(".ts")
         ? "ts"
         : "jsx",
-    }).scanImports(readFileSync(target));
+    }).scanImports(readFileSync(target, "utf-8"));
     for (const imp of imports) {
       if (imp.kind === "import-statement") {
         const path = require.resolve(
@@ -218,11 +225,19 @@ function* scanCacheDependencies(
   } catch {}
 }
 
+function hashremap(input: string, hash: string) {
+  const parsed = parse(input);
+  return `${join(parsed.dir, parsed.name)}-${hash}${parsed.ext}`;
+}
+
 export class StaticFileCache {
   #cache = new Map<string, BunFile>();
   constructor(public base: string) {}
   reset() {
     this.#cache.clear();
+  }
+  remap(pathname: string, real: string) {
+    this.#cache.set(pathname, Bun.file(real));
   }
   match(pathname: string): BunFile | undefined {
     if (this.#cache.has(pathname)) {
