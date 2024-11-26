@@ -1,5 +1,6 @@
 import { Glob, Transpiler, fileURLToPath, pathToFileURL } from "bun";
-import { basename, join, relative } from "node:path";
+import { basename, join, parse, relative } from "node:path";
+import { hashremap } from "./hash";
 
 function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
@@ -105,8 +106,12 @@ export async function build({
       const path = relative(outdir, output.path);
       if (output.kind === "entry-point" && output.hash) {
         hashed[`/${path}`] = output.hash;
+        const imports = transpiler.scanImports(await output.text());
+        dependencies[`/${hashremap(path, output.hash)}`] = imports
+          .filter((x) => x.kind === "import-statement")
+          .map((x) => "/" + join(path, "..", x.path));
       }
-      if (output.kind === "entry-point" || output.kind === "chunk") {
+      if (output.kind === "chunk") {
         const imports = transpiler.scanImports(await output.text());
         dependencies[`/${path}`] = imports
           .filter((x) => x.kind === "import-statement")

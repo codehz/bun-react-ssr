@@ -144,12 +144,17 @@ export class StaticRouters {
         headers: { Location: result.redirect },
       });
     }
+    const hashedBootstrapModules = bootstrapModules?.map((name) => {
+      const hash = this.#hashed[name];
+      if (hash) return hashremap(name, hash);
+      return name;
+    });
     const stream = await renderToReadableStream(
       <Shell route={serverSide.pathname + search} {...staticProps} {...result}>
         <MetaContext.Provider
           value={{ hash: this.#hashed, dependencies: this.#dependencies }}
         >
-          {bootstrapModules?.map((name, idx) => (
+          {hashedBootstrapModules?.map((name, idx) => (
             <PreloadModule key={idx} module={name} />
           ))}
           <PreloadModule
@@ -170,11 +175,7 @@ export class StaticRouters {
         ]
           .filter(Boolean)
           .join(";"),
-        bootstrapModules: bootstrapModules?.map((name) => {
-          const hash = this.#hashed[name];
-          if (hash) return hashremap(name, hash);
-          return name;
-        }),
+        bootstrapModules: hashedBootstrapModules,
         onError,
       }
     );
