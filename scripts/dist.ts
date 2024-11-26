@@ -42,3 +42,4 @@ contents.version = spawnSync("git", ["describe", "--tags"], {
   .replace(/^v/, "");
 delete contents.devDependencies["bun-plugin-dts"];
 await Bun.write("dist/package.json", JSON.stringify(contents, null, 2));
+process.exit(0);
