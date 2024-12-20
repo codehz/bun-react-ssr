@@ -47,7 +47,6 @@ export async function build({
       ...define,
     },
     plugins: [
-      ...(plugins ?? []),
       {
         name: "bun-react-ssr",
         target: "browser",
@@ -95,6 +94,7 @@ export async function build({
           );
         },
       },
+      ...(plugins ?? []),
     ],
   });
   if (result.success) {
