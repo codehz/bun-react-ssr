@@ -14,6 +14,16 @@ export async function build({
   minify = Bun.env.NODE_ENV === "production",
   define,
   plugins,
+  onLoadPageFile = async ({ path, loader }) => {
+    const contents = await Bun.file(path).text();
+    return {
+      contents: contents.replaceAll(
+        /\/\/\s*@server-side[^\n\S]*\n[^\n]+\n/g,
+        ""
+      ),
+      loader,
+    };
+  },
 }: {
   baseDir: string;
   buildDir?: string;
@@ -23,6 +33,7 @@ export async function build({
   minify?: boolean;
   define?: Record<string, string>;
   plugins?: import("bun").BunPlugin[];
+  onLoadPageFile?: import("bun").OnLoadCallback;
 }) {
   const entrypoints = [join(baseDir, hydrate)];
   const absPageDir = join(baseDir, pageDir);
@@ -81,16 +92,7 @@ export async function build({
           );
           build.onLoad(
             { namespace: "client", filter: /\.ts[x]$/ },
-            async ({ path, loader }) => {
-              const contents = await Bun.file(path).text();
-              return {
-                contents: contents.replaceAll(
-                  /\/\/\s*@server-side[^\n\S]*\n[^\n]+\n/g,
-                  ""
-                ),
-                loader,
-              };
-            }
+            onLoadPageFile
           );
         },
       },
