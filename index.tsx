@@ -95,6 +95,7 @@ export class StaticRouters {
         console.error(error, errorInfo);
       },
       noStreaming,
+      headers,
       staticHeaders,
       staticProps,
     }: {
@@ -104,6 +105,7 @@ export class StaticRouters {
       context?: T;
       onError?(error: unknown, errorInfo: React.ErrorInfo): string | void;
       noStreaming?: boolean;
+      headers?: HeadersInit;
       staticHeaders?: HeadersInit;
       staticProps?: Record<string, unknown>;
     }
@@ -135,13 +137,14 @@ export class StaticRouters {
         headers: {
           "Content-Type": "application/vnd.server-side-props",
           "Cache-Control": "no-store",
+          ...headers,
         },
       });
     }
     if (result?.redirect) {
       return new Response(null, {
         status: 302,
-        headers: { Location: result.redirect },
+        headers: { Location: result.redirect, ...headers },
       });
     }
     const hashedBootstrapModules = bootstrapModules?.map((name) => {
@@ -184,6 +187,7 @@ export class StaticRouters {
         headers: {
           "Content-Type": "text/html; charset=utf-8",
           "Cache-Control": "no-store",
+          ...headers,
         },
       });
     }
@@ -191,6 +195,7 @@ export class StaticRouters {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
+        ...headers,
       },
     });
   }
