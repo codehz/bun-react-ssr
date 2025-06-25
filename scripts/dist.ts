@@ -10,7 +10,7 @@ async function glob(pattern: string) {
   return result;
 }
 
-await rm("dist", { recursive: true });
+await rm("dist", { recursive: true, force: true });
 
 await Bun.build({
   target: "bun",
