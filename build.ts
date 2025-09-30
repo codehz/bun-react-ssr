@@ -1,10 +1,6 @@
 import { Glob, Transpiler, fileURLToPath, pathToFileURL } from "bun";
 import { basename, join, parse, relative } from "node:path";
 
-function escapeRegExp(string: string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
-}
-
 export async function build({
   baseDir,
   buildDir = ".build",
@@ -62,26 +58,8 @@ export async function build({
         name: "bun-react-ssr",
         target: "browser",
         setup(build) {
-          build.onLoad(
-            {
-              filter: new RegExp(
-                "^" + escapeRegExp(absPageDir) + "/.*" + "\\.ts[x]$"
-              ),
-            },
-            async ({ path, loader }) => {
-              const search = new URLSearchParams();
-              search.append("client", "1");
-              search.append("loader", loader);
-              return {
-                contents:
-                  "export { default } from " +
-                  JSON.stringify("./" + basename(path) + "?client"),
-                loader: "ts",
-              };
-            }
-          );
           build.onResolve(
-            { filter: /\.ts[x]\?client$/ },
+            { filter: new RegExp(`^${RegExp.escape(absPageDir)}/.*\\.ts[x]$`) },
             async ({ importer, path }) => {
               const url = pathToFileURL(importer);
               return {
